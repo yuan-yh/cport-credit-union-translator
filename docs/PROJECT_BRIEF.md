@@ -7,7 +7,7 @@
 
 ## Overview
 
-cPort Credit Union is implementing an AI-powered real-time translation tool to serve Maine's diverse immigrant populations through personalized, culturally-sensitive banking services. This system will provide immediate multilingual support across five languages while maintaining the personal touch that distinguishes credit unions from larger banks.
+cPort Credit Union is implementing an AI-powered real-time translation tool to serve Maine's diverse immigrant populations through personalized, culturally-sensitive banking services. This greeter-centric system will provide immediate multilingual support across five languages while maintaining the personal touch that distinguishes credit unions from larger banks.
 
 ## Organization Context
 
@@ -47,7 +47,7 @@ cPort serves Maine's five-county region (Cumberland, Kennebec, Androscoggin, Sag
 ## Solution Overview
 
 ### Core Concept
-A real-time translation system that combines Google Cloud's enterprise translation API with cPort-specific fine-tuned models, delivering culturally appropriate banking support through staff-mediated interactions.
+A greeter-centric real-time translation system that combines Google Cloud's enterprise translation API with cPort-specific fine-tuned models, delivering culturally appropriate banking support through staff-mediated interactions.
 
 ### Key Differentiators
 1. **Credit Union Focus**: Translations adapted for "share draft accounts," "member" vs "customer," cooperative financial concepts
@@ -85,6 +85,43 @@ A real-time translation system that combines Google Cloud's enterprise translati
 - **Role**: Banking service recipients
 - **Use Cases**: Clear communication about products, understanding complex financial concepts, receiving translated summaries
 
+## Business Objectives
+
+### Primary Goals
+1. **Member Growth**: 15-25% increase in new immigrant member acquisition within 12 months
+2. **Service Quality**: Improve customer satisfaction scores by 20+ points for multilingual interactions
+3. **Operational Efficiency**: Reduce average service time by 15% while improving accuracy
+4. **Revenue Growth**: Increase cross-selling success rate by 25% among multilingual members
+5. **Market Leadership**: Establish cPort as Maine's premier multilingual financial institution
+
+### Success Metrics
+- **Usage**: 40-60% adoption rate among eligible multilingual members within 6 months
+- **Accuracy**: 95% translation accuracy for common banking terms, 85% for complex financial products
+- **Satisfaction**: Net Promoter Score increase of 10-20 points among served communities
+- **Efficiency**: 20% reduction in professional interpreter costs, 30% faster service resolution
+- **Growth**: $500K-1.5M in new deposits from immigrant community outreach
+
+## Project Constraints
+
+### Technical Constraints
+- **Developer Resources**: Part-time software intern (20 hours/week) plus senior developer oversight
+- **Timeline**: 4-month development window (September-December 2025)
+- **Budget**: $40,000-50,000 total first-year investment including development and operations
+- **Integration**: Must work alongside existing banking systems without disruption
+- **Compliance**: Banking industry security and privacy requirements
+
+### Operational Constraints
+- **Staff Training**: Minimal learning curve for 109+ employees
+- **Branch Operations**: Cannot disrupt normal banking hours during implementation
+- **Member Communication**: Changes must enhance, not complicate, member experience
+- **Regulatory Approval**: Must maintain NCUA examination readiness
+
+### Technology Constraints
+- **Existing Infrastructure**: Integration with current network and device capabilities
+- **Internet Dependency**: Must function with Maine branch internet connectivity
+- **Device Limitations**: Primary interface on standard iPads and desktop computers
+- **Maintenance**: Minimal ongoing technical maintenance requirements
+
 ## Risk Factors & Mitigation
 
 ### High-Risk Areas
@@ -105,3 +142,64 @@ A real-time translation system that combines Google Cloud's enterprise translati
 - Integration challenges with existing banking systems
 - Cost overruns on AI services
 - Performance issues with real-time translation
+
+## Project Timeline
+
+### Development Phases
+**Month 1 (September 2025)**: Foundation and data preparation
+**Month 2 (October 2025)**: Core translation features and basic interfaces
+**Month 3 (November 2025)**: User interface development and AI model training
+**Month 4 (December 2025)**: Testing, deployment, and staff training
+
+### Launch Strategy
+**January 2025**: Pilot launch at Forest Avenue Portland branch
+**February 2025**: Rollout to remaining Portland branches
+**March 2025**: Expansion to Augusta and Scarborough
+**April 2025**: Full system deployment including new Lewiston branch
+
+## Success Criteria
+
+### MVP Success Indicators
+- ✅ System successfully deployed across all 5+ branches
+- ✅ Staff can operate translation tool with <1 hour training
+- ✅ 95% uptime during business hours
+- ✅ Positive feedback from community validation partners
+- ✅ No regulatory compliance issues identified
+
+### Business Impact Goals (6-month post-launch)
+- 500+ multilingual banking interactions completed successfully
+- 2+ new community partnerships established
+- 100+ new immigrant members acquired directly through translation capability
+- Featured recognition in Maine banking/technology publications
+- Request for system demonstration from other credit unions
+
+## Stakeholder Communication
+
+### Internal Stakeholders
+- **Gene Ardito** (CEO): Overall project success and ROI
+- **Kelsey Marquis** (CFO/COO): Operational integration and cost management  
+- **Bill Whitmore** (EVP Business Development/IT): Technical implementation and staff adoption
+- **Branch Managers**: Day-to-day operations and member feedback
+- **Universal Bankers**: Direct system users and community interface
+
+### External Stakeholders
+- **Greater Portland Immigrant Welcome Center**: Community validation and cultural appropriateness
+- **Maine Immigrants' Rights Coalition**: Translation accuracy and cultural sensitivity review
+- **NCUA Examiners**: Regulatory compliance and audit trail documentation
+- **Community Leaders**: Ongoing feedback and improvement suggestions
+
+## Long-term Vision
+
+### Phase 2 Enhancements (2026)
+- Mobile app for members with offline translation capability
+- Integration with cPort's core banking system for real-time account data
+- Video calling with remote interpretation services
+- Advanced analytics for member service optimization
+
+### Community Impact Goals
+- Establish cPort as the definitive multilingual financial institution in Maine
+- Create a replicable model for other credit unions serving immigrant communities
+- Contribute to Maine's economic development through improved financial inclusion
+- Build lasting partnerships with immigrant advocacy organizations
+
+This translation tool represents cPort's commitment to innovation while staying true to the credit union mission of serving all community members with dignity, respect, and excellent financial services.
