@@ -166,13 +166,13 @@ const ConsultorDashboard: React.FC = () => {
                                     <div className="space-y-2">
                                         {serviceSteps.map((step, index) => (
                                             <div key={index} className={`p-2 rounded text-sm ${index < serviceProgress ? 'bg-green-100 text-green-800' :
-                                                    index === serviceProgress ? 'bg-blue-100 text-blue-800 font-medium' :
-                                                        'bg-gray-100 text-gray-600'
+                                                index === serviceProgress ? 'bg-blue-100 text-blue-800 font-medium' :
+                                                    'bg-gray-100 text-gray-600'
                                                 }`}>
                                                 <div className="flex items-center">
                                                     <div className={`w-4 h-4 rounded-full mr-2 ${index < serviceProgress ? 'bg-green-500' :
-                                                            index === serviceProgress ? 'bg-blue-500' :
-                                                                'bg-gray-400'
+                                                        index === serviceProgress ? 'bg-blue-500' :
+                                                            'bg-gray-400'
                                                         }`}></div>
                                                     {step}
                                                 </div>

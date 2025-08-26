@@ -31,6 +31,11 @@ const GreeterDashboard: React.FC = () => {
         setShowTranslation(false);
     };
 
+    const handleStartTranslation = () => {
+        console.log('Starting translation for language:', currentLanguage);
+        setShowTranslation(true);
+    };
+
     return (
         <div className="min-h-screen bg-gray-50">
             <Header />
@@ -48,7 +53,7 @@ const GreeterDashboard: React.FC = () => {
                             <LanguageSelector
                                 selectedLanguage={currentLanguage}
                                 onLanguageChange={setCurrentLanguage}
-                                onStartTranslation={() => setShowTranslation(true)}
+                                onStartTranslation={handleStartTranslation}
                             />
                         </div>
 
@@ -68,16 +73,21 @@ const GreeterDashboard: React.FC = () => {
                         </div>
                     </div>
 
-                    {/* Translation Panel */}
+                    {/* Translation Panel - Full Screen Popup */}
                     {showTranslation && (
-                        <div className="mt-6">
-                            <TranslationPanel
-                                sourceLanguage="en"
-                                targetLanguage={currentLanguage}
-                                onClose={() => setShowTranslation(false)}
-                            />
-                        </div>
+                        <TranslationPanel
+                            sourceLanguage="en"
+                            targetLanguage={currentLanguage}
+                            onClose={() => setShowTranslation(false)}
+                        />
                     )}
+
+                    {/* Debug Info - Remove after testing */}
+                    {/* {process.env.NODE_ENV === 'development' && (
+                        <div className="fixed bottom-4 right-4 bg-black text-white p-2 rounded text-xs">
+                            Language: {currentLanguage} | Show: {showTranslation.toString()}
+                        </div>
+                    )} */}
                 </div>
             </div>
         </div>

@@ -30,8 +30,8 @@ const LanguageSelector: React.FC<LanguageSelectorProps> = ({
                         key={lang.code}
                         onClick={() => onLanguageChange(lang.code)}
                         className={`p-3 rounded-md border-2 transition-all ${selectedLanguage === lang.code
-                                ? 'border-cport-blue bg-blue-50 text-cport-blue'
-                                : 'border-gray-200 hover:border-gray-300'
+                            ? 'border-cport-blue bg-blue-50 text-cport-blue'
+                            : 'border-gray-200 hover:border-gray-300'
                             }`}
                     >
                         <div className="text-2xl mb-1">{lang.flag}</div>
@@ -42,12 +42,14 @@ const LanguageSelector: React.FC<LanguageSelectorProps> = ({
             </div>
 
             {selectedLanguage !== 'en' && (
-                <button
-                    onClick={onStartTranslation}
-                    className="w-full bg-cport-green text-white py-2 rounded-md hover:bg-green-600 transition-colors"
-                >
-                    Start Translation
-                </button>
+                <div className="mt-4">
+                    <button
+                        onClick={onStartTranslation}
+                        className="w-full bg-cport-green text-white py-3 rounded-md hover:bg-green-600 transition-colors font-medium"
+                    >
+                        Start Translation
+                    </button>
+                </div>
             )}
         </div>
     );
