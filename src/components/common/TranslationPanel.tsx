@@ -60,16 +60,23 @@ const TranslationPanel: React.FC<TranslationPanelProps> = ({
     };
 
     return (
-        <div className="bg-white p-6 rounded-lg shadow-lg border-2 border-cport-blue">
-            <div className="flex justify-between items-center mb-4">
-                <h3 className="text-lg font-semibold text-gray-800">Real-time Translation</h3>
-                <button
-                    onClick={onClose}
-                    className="text-gray-500 hover:text-gray-700 text-xl"
-                >
-                    ×
-                </button>
-            </div>
+        <div 
+            className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+            onClick={onClose}
+        >
+            <div 
+                className="bg-white p-6 rounded-lg shadow-xl border max-w-lg w-full mx-4 max-h-[80vh] overflow-y-auto"
+                onClick={(e) => e.stopPropagation()}
+            >
+                <div className="flex justify-between items-center mb-4">
+                    <h3 className="text-lg font-semibold text-gray-800">Real-time Translation</h3>
+                    <button
+                        onClick={onClose}
+                        className="text-gray-500 hover:text-gray-700 text-xl font-bold w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100"
+                    >
+                        ×
+                    </button>
+                </div>
 
             <div className="flex items-center justify-center mb-4">
                 <div className="text-center">
@@ -96,7 +103,7 @@ const TranslationPanel: React.FC<TranslationPanelProps> = ({
                                 : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
                             }`}
                     >
-                        {isRecording ? '🔴' : '🎤'}
+                        {isRecording ? 'Stop' : 'Mic'}
                     </button>
                     <button
                         onClick={handleTranslate}
@@ -127,6 +134,7 @@ const TranslationPanel: React.FC<TranslationPanelProps> = ({
                     ))}
                 </div>
             </div>
+        </div>
         </div>
     );
 };

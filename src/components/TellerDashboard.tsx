@@ -172,15 +172,13 @@ const TellerDashboard: React.FC = () => {
                         </div>
                     </div>
 
-                    {/* Translation Panel */}
+                    {/* Translation Modal */}
                     {showTranslation && activeCustomer && (
-                        <div className="mt-6">
-                            <TranslationPanel
-                                sourceLanguage="en"
-                                targetLanguage={activeCustomer.language}
-                                onClose={() => setShowTranslation(false)}
-                            />
-                        </div>
+                        <TranslationPanel
+                            sourceLanguage="en"
+                            targetLanguage={activeCustomer.language}
+                            onClose={() => setShowTranslation(false)}
+                        />
                     )}
                 </div>
             </div>
