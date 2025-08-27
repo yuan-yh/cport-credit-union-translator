@@ -104,11 +104,11 @@ const VoiceTranslationPanel: React.FC<VoiceTranslationPanelProps> = ({
 
             mediaRecorder.start();
             setIsRecording(true);
-            setStatus(`🎤 Recording (${currentTurn === 'customer' ? targetLanguage : 'English'})...`);
+            setStatus(`Recording (${currentTurn === 'customer' ? targetLanguage : 'English'})...`);
 
         } catch (error) {
             console.error('Error starting recording:', error);
-            setStatus('❌ Microphone access denied');
+            setStatus('Microphone access denied');
         }
     };
 
@@ -117,7 +117,7 @@ const VoiceTranslationPanel: React.FC<VoiceTranslationPanelProps> = ({
             mediaRecorderRef.current.stop();
             setIsRecording(false);
             setIsProcessing(true);
-            setStatus('🔄 Processing...');
+            setStatus('Processing...');
         }
     };
 
