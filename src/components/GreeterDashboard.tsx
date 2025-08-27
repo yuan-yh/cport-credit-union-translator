@@ -3,7 +3,7 @@ import { useApp } from '../context/AppContext';
 import type { Customer } from '../types';
 import Header from './common/Header';
 import LanguageSelector from './greeter/LanguageSelector';
-import TranslationPanel from './common/TranslationPanel';
+import VoiceTranslationPanel from './common/VoiceTranslationPanel';
 import CustomerForm from './greeter/CustomerForm';
 import QueueAssignment from './greeter/QueueAssignment';
 
@@ -68,15 +68,16 @@ const GreeterDashboard: React.FC = () => {
                         </div>
                     </div>
 
-                    {/* Translation Panel */}
+                    {/* Translation Modal */}
                     {showTranslation && (
-                        <div className="mt-6">
-                            <TranslationPanel
-                                sourceLanguage="en"
-                                targetLanguage={currentLanguage}
-                                onClose={() => setShowTranslation(false)}
-                            />
-                        </div>
+                        <VoiceTranslationPanel
+                            targetLanguage={currentLanguage}
+                            onClose={() => setShowTranslation(false)}
+                            onCustomerDataUpdate={(data) => {
+                                setCustomerData(prev => ({ ...prev, ...data }));
+                            }}
+                            currentCustomerData={customerData}
+                        />
                     )}
                 </div>
             </div>
