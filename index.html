@@ -1,0 +1,318 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>cPort Speech Mediator</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.15);
+            padding: 40px;
+            max-width: 500px;
+            width: 100%;
+            text-align: center;
+        }
+
+        .header {
+            margin-bottom: 30px;
+        }
+
+        .logo {
+            width: 70px;
+            height: 70px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            border-radius: 18px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 20px;
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
+        }
+
+        .logo i {
+            font-size: 32px;
+            color: white;
+        }
+
+        h1 {
+            color: #2d3748;
+            font-size: 2.2rem;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+
+        .subtitle {
+            color: #718096;
+            font-size: 1rem;
+            font-weight: 400;
+        }
+
+        .status {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 25px;
+            padding: 10px 20px;
+            border-radius: 25px;
+            font-weight: 500;
+            font-size: 0.9rem;
+        }
+
+        .status.connected {
+            background: #f0fff4;
+            color: #22543d;
+        }
+
+        .status.disconnected {
+            background: #fff5f5;
+            color: #742a2a;
+        }
+
+        .status.connecting {
+            background: #fffbeb;
+            color: #92400e;
+        }
+
+        .controls {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            margin-bottom: 30px;
+        }
+
+        .btn {
+            padding: 14px 28px;
+            border: none;
+            border-radius: 12px;
+            font-size: 0.95rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            min-width: 130px;
+            justify-content: center;
+        }
+
+        .btn-primary {
+            background: #667eea;
+            color: white;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            background: #5a67d8;
+            transform: translateY(-1px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-secondary {
+            background: #f7fafc;
+            color: #4a5568;
+            border: 2px solid #e2e8f0;
+        }
+
+        .btn-secondary:hover:not(:disabled) {
+            background: #edf2f7;
+            border-color: #cbd5e0;
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none !important;
+        }
+
+        .transcript-container {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 16px;
+            padding: 20px;
+            margin-bottom: 25px;
+            min-height: 100px;
+            text-align: left;
+        }
+
+        .transcript-label {
+            color: #4a5568;
+            font-weight: 600;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .transcript-content {
+            color: #2d3748;
+            font-size: 1rem;
+            line-height: 1.5;
+            min-height: 50px;
+            font-weight: 400;
+        }
+
+        .transcript-content.empty {
+            color: #a0aec0;
+            font-style: italic;
+        }
+
+        .features {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+        }
+
+        .feature {
+            text-align: center;
+            padding: 15px 10px;
+        }
+
+        .feature i {
+            font-size: 20px;
+            color: #667eea;
+            margin-bottom: 8px;
+        }
+
+        .feature h3 {
+            font-size: 0.8rem;
+            color: #4a5568;
+            font-weight: 600;
+            margin-bottom: 2px;
+        }
+
+        .feature p {
+            font-size: 0.7rem;
+            color: #718096;
+        }
+
+        .pulse {
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.7; }
+            100% { opacity: 1; }
+        }
+
+        .fade-in {
+            animation: fadeIn 0.6s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @media (max-width: 640px) {
+            .container {
+                padding: 30px 20px;
+                margin: 10px;
+            }
+            
+            h1 {
+                font-size: 1.8rem;
+            }
+            
+            .controls {
+                flex-direction: column;
+                align-items: center;
+            }
+            
+            .btn {
+                width: 100%;
+                max-width: 250px;
+            }
+
+            .features {
+                grid-template-columns: 1fr;
+                gap: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container fade-in">
+        <div class="header">
+            <div class="logo">
+                <i class="fas fa-microphone-alt"></i>
+            </div>
+            <h1>cPort Speech Mediator</h1>
+            <p class="subtitle">Multi-language speech recognition with English translation</p>
+        </div>
+
+        <div class="status disconnected" id="status">
+            <i class="fas fa-circle"></i>
+            <span>Ready to connect</span>
+        </div>
+
+        <div class="controls">
+            <button class="btn btn-primary" id="startBtn">
+                <i class="fas fa-play"></i>
+                Start
+            </button>
+            <button class="btn btn-secondary" id="stopBtn" disabled>
+                <i class="fas fa-stop"></i>
+                Stop
+            </button>
+            <button class="btn btn-secondary" id="flushBtn" disabled>
+                <i class="fas fa-microphone"></i>
+                Process
+            </button>
+        </div>
+
+        <div class="transcript-container">
+            <div class="transcript-label">
+                <i class="fas fa-comments"></i>
+                Live Transcript
+            </div>
+            <div class="transcript-content empty" id="transcript">
+                Click "Start" to begin speech recognition...
+            </div>
+        </div>
+
+        <div class="features">
+            <div class="feature">
+                <i class="fas fa-globe"></i>
+                <h3>Multi-Language</h3>
+                <p>99+ languages supported</p>
+            </div>
+            <div class="feature">
+                <i class="fas fa-language"></i>
+                <h3>Auto-Translate</h3>
+                <p>To English</p>
+            </div>
+            <div class="feature">
+                <i class="fas fa-volume-up"></i>
+                <h3>Text-to-Speech</h3>
+                <p>English output</p>
+            </div>
+        </div>
+    </div>
+
+    <script type="module" src="/static/app.js"></script>
+</body>
+</html>

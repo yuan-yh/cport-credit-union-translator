@@ -1,0 +1,10 @@
+fastapi
+uvicorn[standard]
+websockets
+numpy
+soundfile
+faster-whisper
+TTS
+torch    # choose correct torch for your hardware; see notes below
+python-multipart
+aiofiles
