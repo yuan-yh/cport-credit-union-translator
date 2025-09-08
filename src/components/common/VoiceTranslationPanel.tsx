@@ -22,6 +22,7 @@ const VoiceTranslationPanel: React.FC<VoiceTranslationPanelProps> = ({
     onCustomerDataUpdate,
     currentCustomerData = {}
 }) => {
+    const API_BASE = (import.meta as any).env?.VITE_API_BASE || '';
     const [isRecording, setIsRecording] = useState(false);
     const [isProcessing, setIsProcessing] = useState(false);
     const [conversationHistory, setConversationHistory] = useState<TranslationEntry[]>([]);
@@ -32,19 +33,28 @@ const VoiceTranslationPanel: React.FC<VoiceTranslationPanelProps> = ({
     const [moodInfo, setMoodInfo] = useState<string>('');
 
     const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+    const audioPreloadRef = useRef<HTMLAudioElement | null>(null);
     const audioContextRef = useRef<AudioContext | null>(null);
     const analyserRef = useRef<AnalyserNode | null>(null);
     const dataArrayRef = useRef<Uint8Array | null>(null);
     const animationIdRef = useRef<number | null>(null);
 
-    // Initialize audio context for waveform visualization
+    // Initialize audio context for waveform visualization and preloading
     useEffect(() => {
+        // Initialize audio preloader
+        audioPreloadRef.current = new Audio();
+        audioPreloadRef.current.preload = 'auto';
+        
         return () => {
             if (animationIdRef.current) {
                 cancelAnimationFrame(animationIdRef.current);
             }
             if (audioContextRef.current) {
                 audioContextRef.current.close();
+            }
+            if (audioPreloadRef.current) {
+                audioPreloadRef.current.pause();
+                audioPreloadRef.current.src = '';
             }
         };
     }, []);
@@ -135,7 +145,7 @@ const VoiceTranslationPanel: React.FC<VoiceTranslationPanelProps> = ({
 
     const processAudio = async (audioBlob: Blob) => {
         try {
-                            setStatus('Processing (optimized for speed)...');
+                            setStatus('Processing...');
             
             const formData = new FormData();
             formData.append('audio', audioBlob, 'recording.wav');
@@ -148,7 +158,7 @@ const VoiceTranslationPanel: React.FC<VoiceTranslationPanelProps> = ({
             const controller = new AbortController();
             const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
 
-            const response = await fetch('/api/translate-with-emotion', {
+            const response = await fetch(`${API_BASE}/translate-with-emotion`, {
                 method: 'POST',
                 body: formData,
                 signal: controller.signal,
@@ -163,7 +173,12 @@ const VoiceTranslationPanel: React.FC<VoiceTranslationPanelProps> = ({
 
             const result = await response.json();
 
-            if (result.success) {
+            if (result.success && result.audioBuffer) {
+                // Show transcription provider info
+                if (result.transcriptionProvider) {
+                    setStatus(`Completed using ${result.transcriptionProvider} (${result.totalLatency || 'unknown'}ms)`);
+                }
+
                 // Decode base64 audio buffer
                 const binaryString = atob(result.audioBuffer);
                 const bytes = new Uint8Array(binaryString.length);
@@ -174,6 +189,12 @@ const VoiceTranslationPanel: React.FC<VoiceTranslationPanelProps> = ({
                 // Create audio URL for playback
                 const audioBlob = new Blob([bytes], { type: 'audio/mpeg' });
                 const audioUrl = URL.createObjectURL(audioBlob);
+
+                // Preload next audio for faster playback
+                if (audioPreloadRef.current) {
+                    audioPreloadRef.current.src = audioUrl;
+                    audioPreloadRef.current.load();
+                }
 
                 // Play the translated audio with optimization
                 const audio = new Audio(audioUrl);

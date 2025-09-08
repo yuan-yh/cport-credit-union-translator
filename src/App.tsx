@@ -1,4 +1,3 @@
-import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { AppProvider } from './context/AppContext';
 import LoginScreen from './components/LoginScreen';
@@ -11,7 +10,7 @@ function App() {
   return (
     <AppProvider>
       <Router>
-        <div className="min-h-screen bg-gray-50">
+        <div className="min-h-screen bg-gray-50 border-2 border-red-500 flex items-center justify-center w-screen">
           <Routes>
             <Route path="/" element={<LoginScreen />} />
             <Route path="/greeter" element={<GreeterDashboard />} />

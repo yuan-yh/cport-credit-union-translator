@@ -58,7 +58,6 @@ const GreeterDashboard: React.FC = () => {
                                 customerData={customerData}
                                 onCustomerDataChange={setCustomerData}
                                 onSubmit={handleCustomerSubmit}
-                                currentLanguage={currentLanguage}
                             />
                         </div>
 

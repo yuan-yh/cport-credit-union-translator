@@ -18,7 +18,8 @@
     "hume": "^0.13.3",
     "multer": "^2.0.2",
     "openai": "^5.16.0",
-    "socket.io": "^4.8.1"
+    "socket.io": "^4.8.1",
+    "sqlite3": "^5.1.7"
   },
   "devDependencies": {
     "@types/node": "^24.3.0",

@@ -5,14 +5,12 @@ interface CustomerFormProps {
     customerData: Partial<Customer>;
     onCustomerDataChange: (data: Partial<Customer>) => void;
     onSubmit: (customer: Partial<Customer>) => void;
-    currentLanguage: string;
 }
 
 const CustomerForm: React.FC<CustomerFormProps> = ({
     customerData,
     onCustomerDataChange,
     onSubmit,
-    currentLanguage
 }) => {
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();

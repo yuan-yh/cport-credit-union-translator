@@ -1,6 +1,8 @@
 const OpenAI = require('openai');
 const { HumeClient } = require('hume');
 const fs = require('fs');
+const { spawn } = require('child_process');
+const ConversationCache = require('./conversationCache');
 
 class AIService {
     constructor() {
@@ -33,6 +35,28 @@ class AIService {
         this.maxTokens = parseInt(process.env.MAX_TOKENS) || (this.fastMode ? 150 : 300);
         this.temperature = parseFloat(process.env.TEMPERATURE) || (this.fastMode ? 0.1 : 0.3);
         this.ttsSpeed = parseFloat(process.env.TTS_SPEED) || (this.fastMode ? 1.1 : 0.9);
+
+        // LLM model selection
+        this.translationModel = process.env.OPENAI_TRANSLATION_MODEL || 'gpt-5';
+
+        // Faster-whisper configuration
+        this.fasterWhisperEnabled = process.env.FASTER_WHISPER_ENABLED === 'true';
+        this.fasterWhisperModel = process.env.FASTER_WHISPER_MODEL || 'tiny';
+        this.fasterWhisperDevice = process.env.FASTER_WHISPER_DEVICE || 'cpu';
+        this.fasterWhisperComputeType = process.env.FASTER_WHISPER_COMPUTE_TYPE || 'int8';
+        this.fasterWhisperServerUrl = process.env.FASTER_WHISPER_SERVER_URL || 'http://localhost:8999';
+        this.usePersistentServer = process.env.FASTER_WHISPER_PERSISTENT_SERVER === 'true';
+
+        // Conversation cache configuration
+        this.conversationCacheEnabled = process.env.CONVERSATION_CACHE_ENABLED !== 'false';
+        this.conversationCache = null;
+        if (this.conversationCacheEnabled) {
+            this.conversationCache = new ConversationCache();
+        }
+
+        // Azure GPU configuration (removed)
+        this.azureEnabled = false;
+
 
         // Banking-specific vocabulary and contexts
         this.bankingContext = {
@@ -185,25 +209,385 @@ class AIService {
     }
 
     /**
-     * Perform speech-to-speech translation with emotional context
+     * Check conversation cache for existing translation
      */
-    async speechToSpeechTranslation(audioBuffer, sourceLanguage, targetLanguage, emotionalContext) {
-        try {
-            // Create a temporary file for the audio
-            const tempFilePath = `/tmp/input_audio_${Date.now()}.wav`;
-            fs.writeFileSync(tempFilePath, audioBuffer);
+    async checkConversationCache(originalText, sourceLanguage, targetLanguage) {
+        if (!this.conversationCacheEnabled || !this.conversationCache) {
+            return null;
+        }
 
-            // Step 1: Speech-to-text with Whisper
+        try {
+            const cachedResult = await this.conversationCache.findCachedTranslation(
+                originalText, sourceLanguage, targetLanguage
+            );
+            
+            if (cachedResult) {
+                console.log(`🎯 Cache hit (${cachedResult.cacheHit}): ${originalText.substring(0, 50)}...`);
+                return cachedResult;
+            }
+            
+            return null;
+        } catch (error) {
+            console.error('Error checking conversation cache:', error);
+            return null;
+        }
+    }
+
+    /**
+     * Cache a successful translation
+     */
+    async cacheTranslation(translationData) {
+        if (!this.conversationCacheEnabled || !this.conversationCache) {
+            return;
+        }
+
+        try {
+            await this.conversationCache.cacheTranslation(translationData);
+        } catch (error) {
+            console.error('Error caching translation:', error);
+        }
+    }
+
+    /**
+     * Quick transcription for cache checking (optimized for speed)
+     */
+    async quickTranscription(audioBuffer, sourceLanguage) {
+        try {
+            // Use faster-whisper with minimal settings for quick transcription
+            if (this.fasterWhisperEnabled) {
+                const quickResult = await this.fasterWhisperTranscription(audioBuffer, sourceLanguage);
+                if (quickResult.success) {
+                    return quickResult.text;
+                }
+            }
+            
+            // Fallback to OpenAI with minimal settings
+            const tempFilePath = `/tmp/quick_audio_${Date.now()}.wav`;
+            fs.writeFileSync(tempFilePath, audioBuffer);
+            
             const transcription = await this.openai.audio.transcriptions.create({
                 file: fs.createReadStream(tempFilePath),
                 model: "whisper-1",
                 language: sourceLanguage,
-                prompt: this.getBankingPrompt(sourceLanguage)
+                prompt: this.getBankingPrompt(sourceLanguage),
+                temperature: 0.0, // Deterministic
+                response_format: "text" // Faster than JSON
             });
+            
+            fs.unlinkSync(tempFilePath);
+            return transcription;
+            
+        } catch (error) {
+            console.log('Quick transcription failed:', error.message);
+            return null;
+        }
+    }
+
+    /**
+     * Speech-to-text using faster-whisper (up to 4x faster)
+     */
+    async fasterWhisperTranscription(audioBuffer, sourceLanguage) {
+        return new Promise((resolve, reject) => {
+            if (!this.fasterWhisperEnabled) {
+                reject(new Error('Faster-whisper is not enabled'));
+                return;
+            }
+
+            const startTime = Date.now();
+            const tempFilePath = `/tmp/faster_whisper_${Date.now()}.wav`;
+            
+            try {
+                // Write audio buffer to temporary file
+                fs.writeFileSync(tempFilePath, audioBuffer);
+                
+                // Prepare Python script arguments
+                const pythonScript = require('path').join(__dirname, 'fasterWhisperService.py');
+                const args = [pythonScript, tempFilePath];
+                if (sourceLanguage) {
+                    args.push(sourceLanguage);
+                }
+                
+                console.log('Starting faster-whisper transcription...');
+                
+                // Spawn Python process with OpenMP fix
+                const pythonProcess = spawn('python3', args, {
+                    stdio: ['pipe', 'pipe', 'pipe'],
+                    env: {
+                        ...process.env,
+                        KMP_DUPLICATE_LIB_OK: 'TRUE'
+                    }
+                });
+                
+                let stdout = '';
+                let stderr = '';
+                
+                pythonProcess.stdout.on('data', (data) => {
+                    stdout += data.toString();
+                });
+                
+                pythonProcess.stderr.on('data', (data) => {
+                    stderr += data.toString();
+                });
+                
+                pythonProcess.on('close', (code) => {
+                    // Clean up temp file
+                    try {
+                        fs.unlinkSync(tempFilePath);
+                    } catch (cleanupError) {
+                        console.warn('Failed to clean up temp file:', cleanupError.message);
+                    }
+                    
+                    if (code !== 0) {
+                        console.error('Faster-whisper process failed:', stderr);
+                        reject(new Error(`Faster-whisper failed with code ${code}: ${stderr}`));
+                        return;
+                    }
+                    
+                    try {
+                        const result = JSON.parse(stdout);
+                        const latency = Date.now() - startTime;
+                        
+                        console.log(`Faster-whisper transcription completed in ${latency}ms`);
+                        
+                        resolve({
+                            success: result.success,
+                            text: result.text,
+                            language: result.language,
+                            languageProbability: result.language_probability,
+                            duration: result.duration,
+                            segments: result.segments,
+                            wordTimestamps: result.word_timestamps,
+                            latency: latency,
+                            provider: 'faster-whisper'
+                        });
+                    } catch (parseError) {
+                        console.error('Failed to parse faster-whisper result:', parseError);
+                        reject(new Error('Failed to parse faster-whisper result'));
+                    }
+                });
+                
+                pythonProcess.on('error', (error) => {
+                    // Clean up temp file
+                    try {
+                        fs.unlinkSync(tempFilePath);
+                    } catch (cleanupError) {
+                        // Ignore cleanup errors
+                    }
+                    
+                    console.error('Faster-whisper process error:', error);
+                    reject(error);
+                });
+                
+            } catch (error) {
+                // Clean up temp file
+                try {
+                    fs.unlinkSync(tempFilePath);
+                } catch (cleanupError) {
+                    // Ignore cleanup errors
+                }
+                
+                console.error('Faster-whisper transcription error:', error);
+                reject(error);
+            }
+        });
+    }
+
+    /**
+     * Speech-to-text using persistent faster-whisper server (ultra-fast)
+     */
+    async fasterWhisperServerTranscription(audioBuffer, sourceLanguage) {
+        return new Promise(async (resolve, reject) => {
+            if (!this.fasterWhisperEnabled || !this.usePersistentServer) {
+                reject(new Error('Faster-whisper server is not enabled'));
+                return;
+            }
+
+            const startTime = Date.now();
+            const tempFilePath = `/tmp/faster_whisper_server_${Date.now()}.wav`;
+            
+            try {
+                // Write audio buffer to temporary file
+                fs.writeFileSync(tempFilePath, audioBuffer);
+                
+                console.log('Using persistent faster-whisper server...');
+                
+                // Make HTTP request to persistent server
+                const response = await fetch(`${this.fasterWhisperServerUrl}/transcribe`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        audio_file_path: tempFilePath,
+                        language: sourceLanguage
+                    })
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`Server responded with status: ${response.status}`);
+                }
+                
+                const result = await response.json();
+                const latency = Date.now() - startTime;
+                
+                // Clean up temp file
+                try {
+                    fs.unlinkSync(tempFilePath);
+                } catch (cleanupError) {
+                    console.warn('Failed to clean up temp file:', cleanupError.message);
+                }
+                
+                if (result.success) {
+                    console.log(`Persistent faster-whisper transcription completed in ${latency}ms (model load: ${result.model_load_time}s)`);
+                    
+                    resolve({
+                        success: result.success,
+                        text: result.text,
+                        language: result.language,
+                        languageProbability: result.language_probability,
+                        duration: result.duration,
+                        segments: result.segments,
+                        wordTimestamps: result.word_timestamps,
+                        latency: latency,
+                        transcriptionTime: result.transcription_time,
+                        modelLoadTime: result.model_load_time,
+                        provider: 'faster-whisper-server'
+                    });
+                } else {
+                    throw new Error(result.error || 'Transcription failed');
+                }
+                
+            } catch (error) {
+                // Clean up temp file
+                try {
+                    fs.unlinkSync(tempFilePath);
+                } catch (cleanupError) {
+                    // Ignore cleanup errors
+                }
+                
+                console.error('Persistent faster-whisper server error:', error);
+                reject(error);
+            }
+        });
+    }
+
+    // Azure transcription removed
+
+    /**
+     * Perform speech-to-speech translation with emotional context (OpenAI pipeline)
+     */
+    async openaiSpeechToSpeechTranslation(audioBuffer, sourceLanguage, targetLanguage, emotionalContext) {
+        try {
+            const startTime = Date.now();
+            let transcription;
+            let transcriptionProvider = 'openai-whisper';
+
+            // Step 1: Speech-to-text (persistent faster-whisper server, then faster-whisper, then OpenAI)
+            try {
+                if (this.fasterWhisperEnabled && this.usePersistentServer) {
+                    console.log('Attempting persistent faster-whisper server...');
+                    const serverResult = await this.fasterWhisperServerTranscription(audioBuffer, sourceLanguage);
+                    if (serverResult.success) {
+                        transcription = {
+                            text: serverResult.text,
+                            language: serverResult.language
+                        };
+                        transcriptionProvider = 'faster-whisper-server';
+                        console.log(`Using persistent faster-whisper server (${serverResult.latency}ms)`);
+                        
+                        // Performance feedback
+                        if (serverResult.latency < 1000) {
+                            console.log('🚀 Ultra-fast transcription with persistent server!');
+                        }
+                    } else {
+                        throw new Error('Persistent server failed, trying direct faster-whisper');
+                    }
+                } else if (this.fasterWhisperEnabled) {
+                    console.log('Attempting direct faster-whisper transcription...');
+                    const fasterResult = await this.fasterWhisperTranscription(audioBuffer, sourceLanguage);
+                    if (fasterResult.success) {
+                        transcription = {
+                            text: fasterResult.text,
+                            language: fasterResult.language
+                        };
+                        transcriptionProvider = 'faster-whisper';
+                        console.log(`Using faster-whisper (${fasterResult.latency}ms)`);
+                        
+                        // Performance feedback
+                        if (fasterResult.latency > 3000) {
+                            console.log('⚠️  Slow transcription detected. Consider using persistent server for better performance.');
+                        } else if (fasterResult.latency < 1000) {
+                            console.log('🚀 Excellent transcription speed!');
+                        }
+                    } else {
+                        throw new Error('Faster-whisper failed, falling back to OpenAI');
+                    }
+                } else {
+                    throw new Error('Faster-whisper not enabled');
+                }
+            } catch (fasterError) {
+                console.log('Falling back to OpenAI Whisper:', fasterError.message);
+                
+                // Create a temporary file for the audio
+                const tempFilePath = `/tmp/input_audio_${Date.now()}.wav`;
+                fs.writeFileSync(tempFilePath, audioBuffer);
+
+                transcription = await this.openai.audio.transcriptions.create({
+                    file: fs.createReadStream(tempFilePath),
+                    model: "whisper-1",
+                    language: sourceLanguage,
+                    prompt: this.getBankingPrompt(sourceLanguage)
+                });
+
+                // Clean up temp file
+                fs.unlinkSync(tempFilePath);
+            }
+
+            // Step 1.5: Check conversation cache after transcription
+            const cachedResult = await this.checkConversationCache(
+                transcription.text, sourceLanguage, targetLanguage
+            );
+            
+            if (cachedResult) {
+                // Synthesize speech for cached translation so UX remains speech-first
+                const ttsStart = Date.now();
+                const speech = await this.openai.audio.speech.create({
+                    model: this.fastTTSModel,
+                    voice: this.selectVoiceForLanguage(targetLanguage, emotionalContext || { emotionalTone: 'professional' }),
+                    input: cachedResult.translatedText,
+                    speed: this.ttsSpeed,
+                    format: 'wav'
+                });
+
+                const audioArrayBuffer = await speech.arrayBuffer();
+                const translatedAudioBuffer = Buffer.from(audioArrayBuffer);
+
+                const totalLatency = Date.now() - startTime;
+                console.log(`⚡ Cached translation + TTS completed in ${totalLatency}ms (TTS: ${Date.now() - ttsStart}ms)`);
+                
+                return {
+                    success: true,
+                    originalText: transcription.text,
+                    translatedText: cachedResult.translatedText,
+                    audioBuffer: translatedAudioBuffer,
+                    sourceLanguage,
+                    targetLanguage,
+                    emotionalContext: cachedResult.emotionalContext || 'professional',
+                    confidence: 0.98, // High confidence for cached responses
+                    transcriptionProvider: transcriptionProvider,
+                    totalLatency: totalLatency,
+                    cacheHit: cachedResult.cacheHit,
+                    customerMood: cachedResult.customerMood,
+                    extractedName: cachedResult.extractedName,
+                    extractedPhone: cachedResult.extractedPhone,
+                    visitReason: cachedResult.visitReason,
+                    notes: cachedResult.notes
+                };
+            }
 
             // Step 2: Translate with emotional context and banking terminology (OPTIMIZED FOR SPEED)
             const translation = await this.openai.chat.completions.create({
-                model: "gpt-3.5-turbo",
+                model: this.translationModel,
                 messages: [
                     {
                         role: "system",
@@ -224,14 +608,27 @@ class AIService {
                 model: this.fastTTSModel, // Use faster TTS model
                 voice: this.selectVoiceForLanguage(targetLanguage, emotionalContext),
                 input: translation.choices[0].message.content,
-                speed: this.ttsSpeed // Configurable speed for optimization
+                speed: this.ttsSpeed, // Configurable speed for optimization
+                format: 'mp3'
             });
-
-            // Clean up temp file
-            fs.unlinkSync(tempFilePath);
 
             const audioArrayBuffer = await speech.arrayBuffer();
             const translatedAudioBuffer = Buffer.from(audioArrayBuffer);
+
+            const totalLatency = Date.now() - startTime;
+            console.log(`Total translation completed in ${totalLatency}ms using ${transcriptionProvider}`);
+
+            // Step 4: Cache the successful translation
+            await this.cacheTranslation({
+                originalText: transcription.text,
+                translatedText: translation.choices[0].message.content,
+                sourceLanguage,
+                targetLanguage,
+                emotionalContext,
+                customerMood: emotionalContext,
+                audioDuration: 0, // Will be calculated if needed
+                processingTime: totalLatency
+            });
 
             return {
                 success: true,
@@ -241,7 +638,9 @@ class AIService {
                 sourceLanguage,
                 targetLanguage,
                 emotionalContext,
-                confidence: 0.95 // High confidence for OpenAI
+                confidence: 0.95, // High confidence for OpenAI
+                transcriptionProvider: transcriptionProvider,
+                totalLatency: totalLatency
             };
 
         } catch (error) {
@@ -261,6 +660,78 @@ class AIService {
                 translatedText: '',
                 audioBuffer: null
             };
+        }
+    }
+
+    /**
+     * Perform speech-to-speech translation with emotional context
+     */
+    async speechToSpeechTranslation(audioBuffer, sourceLanguage, targetLanguage, emotionalContext) {
+        try {
+            const startTime = Date.now();
+            
+            // Step 0: Quick transcription for cache check (only for very short audio)
+            // This is a performance optimization - if audio is very short, try a quick transcription
+            // to check if it's a common greeting that can be cached
+            if (audioBuffer.length < 50000) { // Less than ~3 seconds of audio
+                try {
+                    console.log('🔍 Attempting quick transcription for cache check...');
+                    const quickTranscription = await this.quickTranscription(audioBuffer, sourceLanguage);
+                    
+                    if (quickTranscription) {
+                        // Check cache with quick transcription
+                        const cachedResult = await this.checkConversationCache(
+                            quickTranscription, sourceLanguage, targetLanguage
+                        );
+                        
+                        if (cachedResult) {
+                            // Synthesize audio for quick cache hits to keep speech-first UX
+                            const ttsStart = Date.now();
+                            const speech = await this.openai.audio.speech.create({
+                                model: this.fastTTSModel,
+                                voice: this.selectVoiceForLanguage(targetLanguage, { emotionalTone: 'professional' }),
+                                input: cachedResult.translatedText,
+                                speed: this.ttsSpeed,
+                                format: 'wav'
+                            });
+
+                            const audioArrayBuffer = await speech.arrayBuffer();
+                            const translatedAudioBuffer = Buffer.from(audioArrayBuffer);
+
+                            const totalLatency = Date.now() - startTime;
+                            console.log(`⚡ Quick cache hit + TTS completed in ${totalLatency}ms (TTS: ${Date.now() - ttsStart}ms)`);
+                            
+                            return {
+                                success: true,
+                                originalText: quickTranscription,
+                                translatedText: cachedResult.translatedText,
+                                audioBuffer: translatedAudioBuffer,
+                                sourceLanguage,
+                                targetLanguage,
+                                emotionalContext: cachedResult.emotionalContext || 'professional',
+                                confidence: 0.98,
+                                transcriptionProvider: 'quick-cache',
+                                totalLatency: totalLatency,
+                                cacheHit: cachedResult.cacheHit,
+                                customerMood: cachedResult.customerMood,
+                                extractedName: cachedResult.extractedName,
+                                extractedPhone: cachedResult.extractedPhone,
+                                visitReason: cachedResult.visitReason,
+                                notes: cachedResult.notes
+                            };
+                        }
+                    }
+                } catch (quickError) {
+                    console.log('Quick transcription failed, proceeding with full processing:', quickError.message);
+                }
+            }
+            
+            // Step 1: Full processing (existing flow)
+            return await this.openaiSpeechToSpeechTranslation(audioBuffer, sourceLanguage, targetLanguage, emotionalContext);
+            
+        } catch (error) {
+            console.error('Speech-to-speech translation error:', error);
+            throw error;
         }
     }
 
@@ -347,7 +818,7 @@ Translate the following ${languageNames[sourceLanguage]} text to ${languageNames
     async extractCustomerInfo(conversationText, sourceLanguage = 'en') {
         try {
             const extraction = await this.openai.chat.completions.create({
-                model: "gpt-3.5-turbo",
+                model: this.translationModel,
                 messages: [
                     {
                         role: "system",
@@ -433,7 +904,7 @@ Return ONLY a JSON object with this exact format:
                 .join('\n');
 
             const summary = await this.openai.chat.completions.create({
-                model: "gpt-3.5-turbo",
+                model: this.translationModel,
                 messages: [
                     {
                         role: "system",

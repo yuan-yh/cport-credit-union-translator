@@ -27,8 +27,10 @@ const upload = multer({
         fileSize: 25 * 1024 * 1024 // 25MB limit for audio files
     },
     fileFilter: (req, file, cb) => {
-        // Accept audio files
-        if (file.mimetype.startsWith('audio/')) {
+        // Accept audio files; some browsers send 'application/octet-stream' for mic blobs
+        const isAudio = file.mimetype && file.mimetype.startsWith('audio/');
+        const isOctetStream = file.mimetype === 'application/octet-stream';
+        if (isAudio || isOctetStream) {
             cb(null, true);
         } else {
             cb(new Error('Only audio files are allowed'), false);
@@ -137,21 +139,20 @@ app.post('/api/translate-speech', upload.single('audio'), async (req, res) => {
             parsedEmotionalContext
         );
 
-        if (translationResult.success) {
-            // Set appropriate headers for audio response
-            res.set({
-                'Content-Type': 'application/json',
-                'X-Audio-Available': 'true'
-            });
-            
-            // Send JSON response with base64 encoded audio
-            res.json({
-                ...translationResult,
-                audioBuffer: translationResult.audioBuffer.toString('base64')
-            });
-        } else {
-            res.status(500).json(translationResult);
+        if (!translationResult || !translationResult.success) {
+            return res.status(500).json(translationResult || { success: false, error: 'Translation failed' });
         }
+
+        // Prepare optional base64 audio only if present
+        const base64Audio = translationResult.audioBuffer && Buffer.isBuffer(translationResult.audioBuffer)
+            ? translationResult.audioBuffer.toString('base64')
+            : undefined;
+
+        res.set({ 'Content-Type': 'application/json' });
+        res.json({
+            ...translationResult,
+            ...(base64Audio ? { audioBuffer: base64Audio } : {})
+        });
     } catch (error) {
         console.error('Translation error:', error);
         res.status(500).json({ error: 'Failed to translate speech' });
@@ -201,29 +202,30 @@ app.post('/api/translate-with-emotion', upload.single('audio'), async (req, res)
             )
         ]);
 
-        if (translationResult.success) {
-            // Process conversation for customer data extraction (can run in background)
-            const customerDataPromise = aiService.processConversationForCustomerData(
-                translationResult.originalText,
-                parsedConversationHistory,
-                parsedCustomerData
-            );
-
-            // Send response immediately, don't wait for customer data extraction
-            const customerDataResult = await customerDataPromise;
-
-            res.json({
-                ...translationResult,
-                emotionAnalysis: emotionResult,
-                audioBuffer: translationResult.audioBuffer.toString('base64'),
-                customerDataExtraction: customerDataResult
-            });
-        } else {
-            res.status(500).json({
-                ...translationResult,
+        if (!translationResult || !translationResult.success) {
+            return res.status(500).json({
+                ...(translationResult || { success: false, error: 'Translation failed' }),
                 emotionAnalysis: emotionResult
             });
         }
+
+        // Process conversation for customer data extraction (can run in background)
+        const customerDataResult = await aiService.processConversationForCustomerData(
+            translationResult.originalText,
+            parsedConversationHistory,
+            parsedCustomerData
+        );
+
+        const base64Audio2 = translationResult.audioBuffer && Buffer.isBuffer(translationResult.audioBuffer)
+            ? translationResult.audioBuffer.toString('base64')
+            : undefined;
+
+        res.json({
+            ...translationResult,
+            emotionAnalysis: emotionResult,
+            ...(base64Audio2 ? { audioBuffer: base64Audio2 } : {}),
+            customerDataExtraction: customerDataResult
+        });
     } catch (error) {
         console.error('Combined translation error:', error);
         res.status(500).json({ error: 'Failed to process audio' });
