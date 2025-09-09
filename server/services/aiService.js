@@ -543,46 +543,28 @@ class AIService {
                 fs.unlinkSync(tempFilePath);
             }
 
+            // Guard: empty/no-speech transcription → fail fast to avoid LLM replying generically
+            if (!transcription || !transcription.text || !transcription.text.trim()) {
+                return {
+                    success: false,
+                    error: 'No speech detected in audio',
+                    originalText: '',
+                    translatedText: '',
+                    audioBuffer: null
+                };
+            }
+
             // Step 1.5: Check conversation cache after transcription
             const cachedResult = await this.checkConversationCache(
                 transcription.text, sourceLanguage, targetLanguage
             );
             
+            let cachedMeta = null;
             if (cachedResult) {
-                // Synthesize speech for cached translation so UX remains speech-first
-                const ttsStart = Date.now();
-                const speech = await this.openai.audio.speech.create({
-                    model: this.fastTTSModel,
-                    voice: this.selectVoiceForLanguage(targetLanguage, emotionalContext || { emotionalTone: 'professional' }),
-                    input: cachedResult.translatedText,
-                    speed: this.ttsSpeed,
-                    format: 'wav'
-                });
-
-                const audioArrayBuffer = await speech.arrayBuffer();
-                const translatedAudioBuffer = Buffer.from(audioArrayBuffer);
-
-                const totalLatency = Date.now() - startTime;
-                console.log(`⚡ Cached translation + TTS completed in ${totalLatency}ms (TTS: ${Date.now() - ttsStart}ms)`);
-                
-                return {
-                    success: true,
-                    originalText: transcription.text,
-                    translatedText: cachedResult.translatedText,
-                    audioBuffer: translatedAudioBuffer,
-                    sourceLanguage,
-                    targetLanguage,
-                    emotionalContext: cachedResult.emotionalContext || 'professional',
-                    confidence: 0.98, // High confidence for cached responses
-                    transcriptionProvider: transcriptionProvider,
-                    totalLatency: totalLatency,
-                    cacheHit: cachedResult.cacheHit,
-                    customerMood: cachedResult.customerMood,
-                    extractedName: cachedResult.extractedName,
-                    extractedPhone: cachedResult.extractedPhone,
-                    visitReason: cachedResult.visitReason,
-                    notes: cachedResult.notes
-                };
+                // Do NOT return early. We still run strict translation to avoid chatty replies.
+                // Keep cached metadata for downstream use (e.g., flags), but always translate fresh.
+                cachedMeta = cachedResult;
+                console.log('💾 Using cached metadata; proceeding with strict translation to avoid reply-style outputs');
             }
 
             // Step 2: Translate with emotional context and banking terminology (OPTIMIZED FOR SPEED)
@@ -595,12 +577,14 @@ class AIService {
                     },
                     {
                         role: "user",
-                        content: transcription.text
+                        content: `Translate from ${sourceLanguage} to ${targetLanguage}.\nReturn ONLY the translated text, no extra words.\nIf already ${targetLanguage}, return unchanged.\n\nTEXT:\n${transcription.text}`
                     }
                 ],
-                temperature: this.temperature, // Lower temperature for faster responses
-                max_tokens: this.maxTokens, // Limit response length for speed
-                stream: false // Ensure we get the full response at once
+                temperature: 0,
+                top_p: 1,
+                presence_penalty: 0,
+                frequency_penalty: 0,
+                stream: false
             });
 
             // Step 3: Text-to-speech with appropriate voice (OPTIMIZED FOR SPEED)
@@ -609,7 +593,7 @@ class AIService {
                 voice: this.selectVoiceForLanguage(targetLanguage, emotionalContext),
                 input: translation.choices[0].message.content,
                 speed: this.ttsSpeed, // Configurable speed for optimization
-                format: 'mp3'
+                format: 'wav'
             });
 
             const audioArrayBuffer = await speech.arrayBuffer();
@@ -640,7 +624,8 @@ class AIService {
                 emotionalContext,
                 confidence: 0.95, // High confidence for OpenAI
                 transcriptionProvider: transcriptionProvider,
-                totalLatency: totalLatency
+                totalLatency: totalLatency,
+                ...(cachedMeta ? { cacheHit: cachedMeta.cacheHit } : {})
             };
 
         } catch (error) {
@@ -764,32 +749,25 @@ class AIService {
             'so': 'Somali'
         };
 
-        return `You are a professional banking translator specializing in ${languageNames[sourceLanguage]} to ${languageNames[targetLanguage]} translation.
+        return `You are a professional banking translator specializing in ${languageNames[sourceLanguage]} → ${languageNames[targetLanguage]} translation.
 
-EMOTIONAL CONTEXT: The speaker's emotional tone is "${emotionalContext.emotionalTone}". Adapt your translation to match this tone appropriately.
+CRITICAL RULES (FOLLOW STRICTLY):
+- You are NOT a chatbot and MUST NOT reply to the user.
+- Output ONLY the translation of the input text, nothing else (no greetings, no questions, no filler).
+- Do NOT change speaker intent; do NOT add or remove information; do NOT rephrase into a response.
+- Maintain professional tone and accurate banking terminology.
+- If source and target languages are the same, return the original text verbatim.
 
-BANKING SPECIALIZATION:
-- Use precise banking and financial terminology
-- Maintain professional yet empathetic tone
-- Ensure accuracy in financial concepts and numbers
-- Be culturally sensitive to banking practices
+EMOTIONAL CONTEXT (for word choice only): "${emotionalContext.emotionalTone}".
 
-TONE ADAPTATION GUIDELINES:
-- ${emotionalContext.emotionalTone === 'friendly' ? 'Use warm, welcoming language' : ''}
-- ${emotionalContext.emotionalTone === 'empathetic' ? 'Show understanding and compassion' : ''}
-- ${emotionalContext.emotionalTone === 'calming' ? 'Use soothing, de-escalating language' : ''}
-- ${emotionalContext.emotionalTone === 'reassuring' ? 'Provide confidence and comfort' : ''}
-- ${emotionalContext.emotionalTone === 'professional' ? 'Maintain formal, respectful tone' : ''}
-- ${emotionalContext.emotionalTone === 'patient' ? 'Use understanding, unhurried language' : ''}
+EXAMPLES (what NOT to do):
+- Input (FR): "Bonjour, mon ami, comment ça va ?"
+  WRONG Output: "Bonjour ! Comment puis-je vous aider aujourd'hui ?"  ← This is a reply, not a translation.
+  RIGHT Output (EN): "Hello, my friend, how are you?"
 
-INSTRUCTIONS:
-1. Translate the banking conversation accurately
-2. Preserve the emotional intent while adapting to cultural norms
-3. Use appropriate banking terminology
-4. Maintain clarity and professionalism
-5. Ensure the translation sounds natural in ${languageNames[targetLanguage]}
-
-Translate the following ${languageNames[sourceLanguage]} text to ${languageNames[targetLanguage]}:`;
+TASK:
+Translate the following ${languageNames[sourceLanguage]} text into natural ${languageNames[targetLanguage]}.
+Return ONLY the translated text:`;
     }
 
     /**
