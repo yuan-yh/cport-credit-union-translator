@@ -7,7 +7,7 @@ class GoogleSTTService {
         this.isEnabled = process.env.GOOGLE_STT_ENABLED === 'true';
         this.model = process.env.GOOGLE_STT_MODEL || 'latest_long';
         this.languageCode = process.env.GOOGLE_STT_LANGUAGE || 'auto';
-        this.apiKey = process.env.GOOGLE_STT_API_KEY || 'REDACTED_GOOGLE_KEY';
+        this.apiKey = process.env.GOOGLE_STT_API_KEY;
         this.baseUrl = 'https://speech.googleapis.com/v1/speech:recognize';
         
         console.log(`🎤 Google STT Service initialized: ${this.isEnabled ? 'ENABLED' : 'DISABLED'}`);

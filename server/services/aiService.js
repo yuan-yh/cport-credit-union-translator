@@ -25,7 +25,7 @@ class AIService {
         
         // Google Cloud TTS for ultra-fast audio generation
         this.googleTTSEnabled = process.env.GOOGLE_TTS_ENABLED === 'true';
-        this.googleTTSApiKey = process.env.GOOGLE_TTS_API_KEY || 'REDACTED_GOOGLE_KEY';
+        this.googleTTSApiKey = process.env.GOOGLE_TTS_API_KEY;
         this.googleTTSVoice = process.env.GOOGLE_TTS_VOICE || 'en-US-Wavenet-D'; // Fast, high-quality voice
         
         console.log(`🎵 Google TTS Service initialized: ${this.googleTTSEnabled ? 'ENABLED' : 'DISABLED'}`);
