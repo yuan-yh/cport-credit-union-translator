@@ -42,12 +42,20 @@ const LanguageSelector: React.FC<LanguageSelectorProps> = ({
             </div>
 
             {selectedLanguage !== 'en' && (
-                <button
-                    onClick={onStartTranslation}
-                    className="w-full bg-cport-green text-white py-2 rounded-md hover:bg-green-600 transition-colors"
-                >
-                    Start Translation
-                </button>
+                <div className="space-y-3">
+                    {/* Real-time Interpreter Info */}
+                    <div className="p-3 bg-blue-50 rounded-md border border-blue-200">
+                        <div className="text-sm font-medium text-blue-800">Real-time Interpreter</div>
+                        <div className="text-xs text-blue-600">Detects speech and translates instantly after you stop speaking</div>
+                    </div>
+                    
+                    <button
+                        onClick={onStartTranslation}
+                        className="w-full bg-cport-green text-white py-3 rounded-md hover:bg-green-600 transition-colors font-medium"
+                    >
+                        Start Real-time Interpreter
+                    </button>
+                </div>
             )}
         </div>
     );

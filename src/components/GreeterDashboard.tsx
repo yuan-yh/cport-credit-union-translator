@@ -3,7 +3,7 @@ import { useApp } from '../context/AppContext';
 import type { Customer } from '../types';
 import Header from './common/Header';
 import LanguageSelector from './greeter/LanguageSelector';
-import VoiceTranslationPanel from './common/VoiceTranslationPanel';
+import StreamingVoiceTranslationPanel from './common/StreamingVoiceTranslationPanel';
 import CustomerForm from './greeter/CustomerForm';
 import QueueAssignment from './greeter/QueueAssignment';
 
@@ -38,8 +38,8 @@ const GreeterDashboard: React.FC = () => {
             <div className="p-6">
                 <div className="max-w-6xl mx-auto">
                     <div className="mb-6">
-                        <h2 className="text-2xl font-bold text-gray-800 mb-2">Welcome Center</h2>
-                        <p className="text-gray-600">Help customers get started and route them to the right service</p>
+                        <h2 className="text-2xl font-bold text-gray-800 mb-2">Welcome Center - Real-time Interpreter</h2>
+                        <p className="text-gray-600">Help customers get started with instant voice translation and route them to the right service</p>
                     </div>
 
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -67,9 +67,9 @@ const GreeterDashboard: React.FC = () => {
                         </div>
                     </div>
 
-                    {/* Translation Modal */}
+                    {/* Real-time Interpreter Modal */}
                     {showTranslation && (
-                        <VoiceTranslationPanel
+                        <StreamingVoiceTranslationPanel
                             targetLanguage={currentLanguage}
                             onClose={() => setShowTranslation(false)}
                             onCustomerDataUpdate={(data) => {

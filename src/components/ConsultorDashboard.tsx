@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import Header from './common/Header';
-import VoiceTranslationPanel from './common/VoiceTranslationPanel';
+import StreamingVoiceTranslationPanel from './common/StreamingVoiceTranslationPanel';
 
 const ConsultorDashboard: React.FC = () => {
     const { state, dispatch } = useApp();
@@ -260,7 +260,7 @@ const ConsultorDashboard: React.FC = () => {
 
                     {/* Translation Modal - unified across roles */}
                     {showTranslation && activeCustomer && (
-                        <VoiceTranslationPanel
+                        <StreamingVoiceTranslationPanel
                             targetLanguage={activeCustomer.language}
                             onClose={() => setShowTranslation(false)}
                         />

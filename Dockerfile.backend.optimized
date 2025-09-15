@@ -1,0 +1,59 @@
+# Optimized Dockerfile for CPort Translation Backend
+# Ready for GPU acceleration when deployed to GPU-enabled infrastructure
+FROM node:18-alpine
+
+# Set working directory
+WORKDIR /app
+
+# Install system dependencies for audio processing
+RUN apk add --no-cache \
+    python3 \
+    py3-pip \
+    make \
+    g++ \
+    ffmpeg \
+    git
+
+# Install Python packages for AI processing
+RUN pip3 install --no-cache-dir \
+    torch \
+    torchaudio \
+    transformers \
+    accelerate \
+    librosa \
+    soundfile \
+    faster-whisper \
+    openai-whisper \
+    numpy \
+    scipy
+
+# Copy package files
+COPY server/package*.json ./
+
+# Install dependencies
+RUN npm ci --only=production
+
+# Copy server code
+COPY server/ ./
+
+# Create optimized configuration
+RUN mkdir -p /app/config
+COPY server/config/gpu-config.json /app/config/gpu-config.json
+
+# Create non-root user for security
+RUN addgroup -g 1001 -S nodejs && \
+    adduser -S nodejs -u 1001
+
+# Change ownership of the app directory
+RUN chown -R nodejs:nodejs /app
+USER nodejs
+
+# Expose port
+EXPOSE 3001
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+    CMD node -e "require('http').get('http://localhost:3001/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) })"
+
+# Start the server
+CMD ["npm", "start"]

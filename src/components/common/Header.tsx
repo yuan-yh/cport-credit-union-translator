@@ -14,7 +14,7 @@ const Header: React.FC = () => {
         <header className="bg-cport-blue text-white p-4 shadow-md">
             <div className="flex justify-between items-center">
                 <div>
-                    <h1 className="text-xl font-bold">cPort Translation Tool</h1>
+                    <h1 className="text-xl font-bold">cPort Real-time Interpreter</h1>
                     <p className="text-blue-200 text-sm">
                         {state.currentUser?.name} - {state.currentUser?.role?.toUpperCase()}
                     </p>

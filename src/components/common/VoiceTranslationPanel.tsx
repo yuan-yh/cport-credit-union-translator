@@ -22,7 +22,7 @@ const VoiceTranslationPanel: React.FC<VoiceTranslationPanelProps> = ({
     onCustomerDataUpdate,
     currentCustomerData = {}
 }) => {
-    const API_BASE = (import.meta as any).env?.VITE_API_BASE || '';
+    const API_BASE = (import.meta as any).env?.VITE_API_BASE || '/api';
     const [isRecording, setIsRecording] = useState(false);
     const [isProcessing, setIsProcessing] = useState(false);
     const [conversationHistory, setConversationHistory] = useState<TranslationEntry[]>([]);

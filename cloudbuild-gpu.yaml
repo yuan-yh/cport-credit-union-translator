@@ -1,0 +1,11 @@
+steps:
+  # Build the GPU-enabled container image
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['build', '-f', 'Dockerfile.backend.gpu', '-t', 'gcr.io/solid-choir-472118-q6/cport-gpu', '.']
+  
+  # Push the container image to Container Registry
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'gcr.io/solid-choir-472118-q6/cport-gpu']
+
+images:
+  - 'gcr.io/solid-choir-472118-q6/cport-gpu'

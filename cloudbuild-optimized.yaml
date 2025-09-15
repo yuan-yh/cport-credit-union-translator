@@ -1,0 +1,11 @@
+steps:
+  # Build the optimized container image
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['build', '-f', 'Dockerfile.backend.optimized', '-t', 'gcr.io/solid-choir-472118-q6/cport-optimized', '.']
+  
+  # Push the container image to Container Registry
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'gcr.io/solid-choir-472118-q6/cport-optimized']
+
+images:
+  - 'gcr.io/solid-choir-472118-q6/cport-optimized'

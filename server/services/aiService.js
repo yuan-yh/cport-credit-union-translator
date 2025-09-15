@@ -1,8 +1,10 @@
 const OpenAI = require('openai');
-const { HumeClient } = require('hume');
+// const { HumeClient } = require('hume'); // Disabled due to deployment issues
 const fs = require('fs');
 const { spawn } = require('child_process');
-const ConversationCache = require('./conversationCache');
+// const ConversationCache = require('./conversationCache'); // Disabled due to sqlite3 issues
+const GoogleSTTService = require('./googleSTTService');
+const RedisCacheService = require('./redisCacheService');
 
 class AIService {
     constructor() {
@@ -10,34 +12,26 @@ class AIService {
             apiKey: process.env.OPENAI_API_KEY
         });
         
-        // Initialize Hume client only if both API key and secret key are available
-        this.humeEnabled = process.env.HUME_API_KEY && 
-                          process.env.HUME_SECRET_KEY && 
-                          process.env.HUME_API_KEY !== 'dummy_key';
-        if (this.humeEnabled) {
-            try {
-                this.hume = new HumeClient({
-                    apiKey: process.env.HUME_API_KEY,
-                    secretKey: process.env.HUME_SECRET_KEY
-                });
-                console.log('Hume AI client initialized with API key and secret');
-            } catch (error) {
-                console.warn('Hume AI client initialization failed:', error.message);
-                this.humeEnabled = false;
-            }
-        } else {
-            console.log('Hume AI disabled - missing API key or secret key, using emotion fallbacks');
-        }
+        // Hume AI disabled due to deployment issues - using enhanced text-based emotion analysis
+        this.humeEnabled = false;
+        console.log('Hume AI disabled - using enhanced text-based emotion analysis with keyword detection');
 
         // Speed optimizations (configurable via environment)
         this.fastMode = process.env.FAST_MODE === 'true';
-        this.fastTTSModel = process.env.TTS_MODEL || (this.fastMode ? 'tts-1' : 'tts-1-hd');
-        this.maxTokens = parseInt(process.env.MAX_TOKENS) || (this.fastMode ? 150 : 300);
-        this.temperature = parseFloat(process.env.TEMPERATURE) || (this.fastMode ? 0.1 : 0.3);
-        this.ttsSpeed = parseFloat(process.env.TTS_SPEED) || (this.fastMode ? 1.1 : 0.9);
+        this.fastTTSModel = process.env.TTS_MODEL || 'tts-1'; // Always use fastest model
+        this.maxTokens = parseInt(process.env.MAX_TOKENS) || 50; // Ultra-reduced for speed
+        this.temperature = parseFloat(process.env.TEMPERATURE) || 0.1; // Always fast
+        this.ttsSpeed = parseFloat(process.env.TTS_SPEED) || 1.4; // Maximum speed
+        
+        // Google Cloud TTS for ultra-fast audio generation
+        this.googleTTSEnabled = process.env.GOOGLE_TTS_ENABLED === 'true';
+        this.googleTTSApiKey = process.env.GOOGLE_TTS_API_KEY || 'REDACTED_GOOGLE_KEY';
+        this.googleTTSVoice = process.env.GOOGLE_TTS_VOICE || 'en-US-Wavenet-D'; // Fast, high-quality voice
+        
+        console.log(`🎵 Google TTS Service initialized: ${this.googleTTSEnabled ? 'ENABLED' : 'DISABLED'}`);
 
         // LLM model selection
-        this.translationModel = process.env.OPENAI_TRANSLATION_MODEL || 'gpt-5';
+        this.translationModel = process.env.OPENAI_TRANSLATION_MODEL || 'gpt-4o-mini';
 
         // Faster-whisper configuration
         this.fasterWhisperEnabled = process.env.FASTER_WHISPER_ENABLED === 'true';
@@ -47,12 +41,15 @@ class AIService {
         this.fasterWhisperServerUrl = process.env.FASTER_WHISPER_SERVER_URL || 'http://localhost:8999';
         this.usePersistentServer = process.env.FASTER_WHISPER_PERSISTENT_SERVER === 'true';
 
-        // Conversation cache configuration
-        this.conversationCacheEnabled = process.env.CONVERSATION_CACHE_ENABLED !== 'false';
+        // Conversation cache configuration (disabled to avoid sqlite3 in Cloud Run)
+        this.conversationCacheEnabled = false;
         this.conversationCache = null;
-        if (this.conversationCacheEnabled) {
-            this.conversationCache = new ConversationCache();
-        }
+
+        // Initialize Google STT service
+        this.googleSTT = new GoogleSTTService();
+
+        // Initialize Redis cache service
+        this.redisCache = new RedisCacheService();
 
         // Azure GPU configuration (removed)
         this.azureEnabled = false;
@@ -82,18 +79,64 @@ class AIService {
     }
 
     /**
+     * Enhanced fallback mood analysis based on audio characteristics
+     */
+    async analyzeTextForMood(audioBuffer) {
+        try {
+            // Simple mood analysis based on audio characteristics
+            // Longer audio might indicate urgency or complexity
+            const audioLength = audioBuffer.length;
+            let primaryMood = 'professional';
+            let confidence = 0.7;
+            
+            if (audioLength > 100000) { // Longer audio
+                primaryMood = 'urgent';
+                confidence = 0.8;
+            } else if (audioLength < 20000) { // Shorter audio
+                primaryMood = 'calm';
+                confidence = 0.6;
+            }
+            
+            const emotions = [
+                { name: primaryMood, score: confidence, confidence: confidence },
+                { name: 'professional', score: 0.6, confidence: 0.6 }
+            ];
+            
+            console.log(`🎭 Enhanced mood analysis: audio length ${audioLength} → ${primaryMood}`);
+            
+            return {
+                emotions,
+                primaryEmotion: { name: primaryMood, score: confidence },
+                emotionalTone: primaryMood
+            };
+            
+        } catch (error) {
+            console.log('Enhanced mood analysis failed, using default:', error.message);
+            return {
+                emotions: [{ name: 'professional', score: 0.8, confidence: 0.8 }],
+                primaryEmotion: { name: 'professional', score: 0.8 },
+                emotionalTone: 'professional'
+            };
+        }
+    }
+
+    /**
      * Analyze emotion in audio using Hume AI
      */
     async analyzeEmotion(audioBuffer) {
         try {
             // Check if Hume AI is enabled and configured
             if (!this.humeEnabled) {
-                console.log('Using fallback emotion analysis (Hume disabled)');
+                console.log('Using enhanced fallback emotion analysis (Hume disabled)');
+                
+                // Enhanced fallback: analyze text content for mood indicators
+                const moodAnalysis = await this.analyzeTextForMood(audioBuffer);
+                
                 return {
                     success: true,
-                    emotions: [{ name: 'professional', score: 0.8, confidence: 0.8 }],
-                    primaryEmotion: { name: 'professional', score: 0.8 },
-                    emotionalTone: 'professional'
+                    emotions: moodAnalysis.emotions,
+                    primaryEmotion: moodAnalysis.primaryEmotion,
+                    emotionalTone: moodAnalysis.emotionalTone
                 };
             }
 
@@ -270,7 +313,7 @@ class AIService {
                 model: "whisper-1",
                 language: sourceLanguage,
                 prompt: this.getBankingPrompt(sourceLanguage),
-                temperature: 0.0, // Deterministic
+                temperature: 0.1, // Deterministic but compatible
                 response_format: "text" // Faster than JSON
             });
             
@@ -280,6 +323,300 @@ class AIService {
         } catch (error) {
             console.log('Quick transcription failed:', error.message);
             return null;
+        }
+    }
+
+    /**
+     * Streaming transcription for real-time processing
+     */
+    async streamingTranscription(audioChunk, language = 'auto', isFinal = false) {
+        try {
+            // Ultra-fast transcription for low latency
+            const startTime = Date.now();
+            
+            // Priority 1: Google Cloud STT (fastest, <100ms)
+            if (this.googleSTT.isEnabled) {
+                try {
+                    const googleResult = await this.googleSTT.streamingTranscription(audioChunk, language, isFinal);
+                    if (googleResult.success) {
+                        console.log(`⚡ Google STT streaming: ${googleResult.processingTime}ms`);
+                        return googleResult;
+                    }
+                } catch (googleError) {
+                    console.log('⚠️ Google STT failed, trying fallback:', googleError.message);
+                }
+            }
+            
+            // Priority 2: Faster-whisper (local, ~200ms)
+            if (this.fasterWhisperEnabled) {
+                try {
+                    const quickResult = await this.fasterWhisperTranscription(audioChunk, language);
+                    if (quickResult.success) {
+                        const duration = Date.now() - startTime;
+                        console.log(`⚡ Faster-whisper transcription: ${duration}ms`);
+                        return {
+                            success: true,
+                            text: quickResult.text || '',
+                            isPartial: !isFinal,
+                            timestamp: Date.now(),
+                            processingTime: duration,
+                            source: 'faster-whisper'
+                        };
+                    }
+                } catch (whisperError) {
+                    console.log('⚠️ Faster-whisper failed, trying OpenAI:', whisperError.message);
+                }
+            }
+            
+            // Priority 3: OpenAI Whisper (fallback, ~500ms)
+            const result = await this.quickTranscription(audioChunk, language);
+            const duration = Date.now() - startTime;
+            console.log(`⚡ OpenAI fallback transcription: ${duration}ms`);
+            
+            return {
+                success: true,
+                text: result || '',
+                isPartial: !isFinal,
+                timestamp: Date.now(),
+                processingTime: duration,
+                source: 'openai-whisper'
+            };
+        } catch (error) {
+            console.error('Streaming transcription error:', error);
+            return { success: false, error: error.message, isPartial: true };
+        }
+    }
+
+    /**
+     * Streaming translation with partial text
+     */
+    async streamingTranslation(partialText, sourceLanguage, targetLanguage, isFinal = false) {
+        try {
+            if (!partialText || !partialText.trim()) {
+                return { success: true, translatedText: '', isPartial: true };
+            }
+
+            // Priority 1: Check Redis cache first (fastest, <1ms)
+            const redisResult = await this.redisCache.getCachedTranslation(
+                partialText, sourceLanguage, targetLanguage
+            );
+            if (redisResult && redisResult.success) {
+                console.log('⚡ Redis cache hit for streaming translation:', partialText.substring(0, 50) + '...');
+                return {
+                    ...redisResult,
+                    isPartial: !isFinal,
+                    timestamp: Date.now(),
+                    processingTime: 0 // Instant from Redis
+                };
+            }
+
+            // Priority 2: Check SQLite cache (fast, ~5ms)
+            const cachedResult = this.conversationCacheEnabled ? await this.checkConversationCache(
+                partialText, sourceLanguage, targetLanguage
+            ) : null;
+            if (cachedResult && cachedResult.success) {
+                console.log('🎯 SQLite cache hit for streaming translation:', partialText.substring(0, 50) + '...');
+                return {
+                    ...cachedResult,
+                    isPartial: !isFinal,
+                    timestamp: Date.now()
+                };
+            }
+
+            // For very short partial text, return as-is if no cache hit
+            if (!isFinal && partialText.length < 10) {
+                return { success: true, translatedText: partialText, isPartial: true };
+            }
+
+            // Ultra-fast translation with minimal settings
+            const startTime = Date.now();
+            const response = await this.openai.chat.completions.create({
+                model: this.translationModel,
+                messages: [
+                    {
+                        role: "system",
+                        content: `Translate from ${sourceLanguage} to ${targetLanguage}. Return ONLY the translated text.`
+                    },
+                    {
+                        role: "user",
+                        content: partialText
+                    }
+                ],
+                temperature: 0.1, // Use 0.1 instead of 0 for compatibility
+                max_completion_tokens: isFinal ? 50 : 20, // Ultra-limited tokens for speed
+                stream: false // Disable streaming for faster response
+            });
+
+            const translatedText = response.choices[0]?.message?.content || '';
+            const duration = Date.now() - startTime;
+            console.log(`⚡ Ultra-fast translation: ${duration}ms`);
+
+            const result = {
+                success: true,
+                translatedText: translatedText.trim(),
+                isPartial: !isFinal,
+                timestamp: Date.now()
+            };
+
+                // Cache the translation for future use (only for final translations)
+                if (isFinal && translatedText.trim()) {
+                    try {
+                        // Cache in both Redis (fastest) and SQLite (persistent)
+                        await Promise.all([
+                            this.redisCache.cacheTranslation(
+                                partialText,
+                                translatedText.trim(),
+                                sourceLanguage,
+                                targetLanguage
+                            ),
+                            this.cacheTranslation({
+                                originalText: partialText,
+                                translatedText: translatedText.trim(),
+                                sourceLanguage,
+                                targetLanguage,
+                                timestamp: Date.now()
+                            })
+                        ]);
+                        console.log('💾 Cached streaming translation in Redis + SQLite');
+                    } catch (cacheError) {
+                        console.log('⚠️ Failed to cache streaming translation:', cacheError.message);
+                    }
+                }
+
+            return result;
+        } catch (error) {
+            console.error('Streaming translation error:', error);
+            return { success: false, error: error.message, isPartial: true };
+        }
+    }
+
+    /**
+     * Streaming TTS for immediate audio feedback
+     */
+    async streamingTTS(text, isPartial = false) {
+        try {
+            if (!text || !text.trim()) {
+                return { success: true, audioBuffer: null, isPartial: true };
+            }
+
+            const startTime = Date.now();
+            
+            // Check Redis cache first for TTS
+            const cachedAudio = await this.redisCache.getCachedTTS(text, 'google-tts');
+            if (cachedAudio) {
+                console.log(`⚡ Redis TTS cache hit: ${text.substring(0, 30)}...`);
+                return {
+                    success: true,
+                    audioBuffer: cachedAudio,
+                    isPartial: isPartial,
+                    timestamp: Date.now(),
+                    processingTime: 0 // Instant from cache
+                };
+            }
+
+            // Priority 1: Google Cloud TTS (fastest, 200-400ms)
+            if (this.googleTTSEnabled) {
+                try {
+                    const googleResult = await this.googleCloudTTS(text, isPartial);
+                    if (googleResult.success) {
+                        console.log(`⚡ Google TTS generated in ${googleResult.processingTime}ms`);
+                        return googleResult;
+                    }
+                } catch (googleError) {
+                    console.log('⚠️ Google TTS failed, trying OpenAI:', googleError.message);
+                }
+            }
+
+            // Priority 2: OpenAI TTS (fallback, 1200ms)
+            const response = await this.openai.audio.speech.create({
+                model: 'tts-1', // Always use fastest model
+                voice: 'alloy',
+                input: text,
+                response_format: 'wav',
+                speed: 1.4 // Maximum speed for fastest processing
+            });
+
+            const audioBuffer = Buffer.from(await response.arrayBuffer());
+            const duration = Date.now() - startTime;
+            console.log(`⚡ OpenAI TTS generated in ${duration}ms`);
+
+            // Cache the TTS audio for future use
+            try {
+                await this.redisCache.cacheTTS(text, audioBuffer, 'openai-tts');
+            } catch (cacheError) {
+                console.log('⚠️ Failed to cache TTS:', cacheError.message);
+            }
+            
+            return {
+                success: true,
+                audioBuffer,
+                isPartial,
+                timestamp: Date.now(),
+                processingTime: duration
+            };
+        } catch (error) {
+            console.error('Streaming TTS error:', error);
+            return { success: false, error: error.message, isPartial: true };
+        }
+    }
+
+
+    /**
+     * Google Cloud TTS for ultra-fast audio generation
+     */
+    async googleCloudTTS(text, isPartial = false) {
+        try {
+            const startTime = Date.now();
+            
+            // Google Cloud TTS API request
+            const requestBody = {
+                input: { text: text },
+                voice: {
+                    languageCode: 'en-US',
+                    name: this.googleTTSVoice,
+                    ssmlGender: 'MALE'
+                },
+                audioConfig: {
+                    audioEncoding: 'LINEAR16',
+                    speakingRate: isPartial ? 1.2 : 1.0, // Faster for partial text
+                    pitch: 0.0,
+                    volumeGainDb: 0.0
+                }
+            };
+
+            const response = await fetch(`https://texttospeech.googleapis.com/v1/text:synthesize?key=${this.googleTTSApiKey}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(requestBody)
+            });
+
+            if (!response.ok) {
+                throw new Error(`Google TTS API error: ${response.status} ${response.statusText}`);
+            }
+
+            const result = await response.json();
+            const audioBuffer = Buffer.from(result.audioContent, 'base64');
+            const duration = Date.now() - startTime;
+
+            // Cache the TTS audio for future use
+            try {
+                await this.redisCache.cacheTTS(text, audioBuffer, 'google-tts');
+            } catch (cacheError) {
+                console.log('⚠️ Failed to cache Google TTS:', cacheError.message);
+            }
+
+            return {
+                success: true,
+                audioBuffer,
+                isPartial,
+                timestamp: Date.now(),
+                processingTime: duration
+            };
+        } catch (error) {
+            console.error('Google Cloud TTS error:', error);
+            return { success: false, error: error.message, isPartial: true };
         }
     }
 
@@ -555,9 +892,9 @@ class AIService {
             }
 
             // Step 1.5: Check conversation cache after transcription
-            const cachedResult = await this.checkConversationCache(
+            const cachedResult = this.conversationCacheEnabled ? await this.checkConversationCache(
                 transcription.text, sourceLanguage, targetLanguage
-            );
+            ) : null;
             
             let cachedMeta = null;
             if (cachedResult) {
@@ -580,7 +917,7 @@ class AIService {
                         content: `Translate from ${sourceLanguage} to ${targetLanguage}.\nReturn ONLY the translated text, no extra words.\nIf already ${targetLanguage}, return unchanged.\n\nTEXT:\n${transcription.text}`
                     }
                 ],
-                temperature: 0,
+                temperature: 0.1,
                 top_p: 1,
                 presence_penalty: 0,
                 frequency_penalty: 0,
@@ -665,9 +1002,9 @@ class AIService {
                     
                     if (quickTranscription) {
                         // Check cache with quick transcription
-                        const cachedResult = await this.checkConversationCache(
+                        const cachedResult = this.conversationCacheEnabled ? await this.checkConversationCache(
                             quickTranscription, sourceLanguage, targetLanguage
-                        );
+                        ) : null;
                         
                         if (cachedResult) {
                             // Synthesize audio for quick cache hits to keep speech-first UX

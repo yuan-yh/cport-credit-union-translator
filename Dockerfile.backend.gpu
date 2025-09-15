@@ -1,0 +1,78 @@
+# GPU-enabled Dockerfile for CPort Translation Backend
+FROM ubuntu:20.04
+
+# Set environment variables
+ENV DEBIAN_FRONTEND=noninteractive
+ENV CUDA_VISIBLE_DEVICES=0
+ENV NVIDIA_VISIBLE_DEVICES=all
+ENV NVIDIA_DRIVER_CAPABILITIES=compute,utility
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    python3 \
+    python3-pip \
+    python3-dev \
+    nodejs \
+    npm \
+    ffmpeg \
+    libsndfile1 \
+    libsndfile1-dev \
+    build-essential \
+    curl \
+    wget \
+    git \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Python packages for GPU acceleration
+RUN pip3 install --no-cache-dir \
+    torch==2.0.1+cu118 \
+    torchaudio==2.0.2+cu118 \
+    torchvision==0.15.2+cu118 \
+    --extra-index-url https://download.pytorch.org/whl/cu118
+
+# Install additional AI/ML packages
+RUN pip3 install --no-cache-dir \
+    transformers==4.30.2 \
+    accelerate==0.20.3 \
+    datasets==2.12.0 \
+    librosa==0.10.1 \
+    soundfile==0.12.1 \
+    faster-whisper==0.9.0 \
+    openai-whisper==20230314 \
+    numpy==1.24.3 \
+    scipy==1.11.1 \
+    scikit-learn==1.3.0
+
+# Set working directory
+WORKDIR /app
+
+# Copy package files
+COPY server/package*.json ./
+
+# Install Node.js dependencies
+RUN npm ci --only=production
+
+# Copy server code
+COPY server/ ./
+
+# Create GPU-optimized configuration
+RUN mkdir -p /app/config
+COPY server/config/gpu-config.json /app/config/gpu-config.json
+
+# Create non-root user for security
+RUN addgroup -g 1001 -S nodejs && \
+    adduser -S nodejs -u 1001
+
+# Change ownership of the app directory
+RUN chown -R nodejs:nodejs /app
+USER nodejs
+
+# Expose port
+EXPOSE 3001
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+    CMD node -e "require('http').get('http://localhost:3001/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) })"
+
+# Start the server with GPU optimization
+CMD ["npm", "run", "start:gpu"]

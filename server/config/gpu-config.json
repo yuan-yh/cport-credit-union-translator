@@ -1,0 +1,27 @@
+{
+  "gpu": {
+    "enabled": true,
+    "device": "cuda:0",
+    "memory_fraction": 0.8,
+    "allow_growth": true
+  },
+  "models": {
+    "whisper": {
+      "model_size": "large-v2",
+      "device": "cuda",
+      "compute_type": "float16",
+      "batch_size": 4
+    },
+    "translation": {
+      "model_size": "large",
+      "device": "cuda",
+      "batch_size": 8,
+      "max_length": 512
+    }
+  },
+  "performance": {
+    "warmup_requests": 3,
+    "cache_size": 1000,
+    "preload_models": true
+  }
+}
