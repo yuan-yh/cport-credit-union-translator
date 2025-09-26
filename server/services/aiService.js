@@ -8,9 +8,22 @@ const RedisCacheService = require('./redisCacheService');
 
 class AIService {
     constructor() {
-        this.openai = new OpenAI({
-            apiKey: process.env.OPENAI_API_KEY
-        });
+        // Mock OpenAI for demo purposes
+        this.openai = {
+            chat: {
+                completions: {
+                    create: this.mockChatCompletion.bind(this)
+                }
+            },
+            audio: {
+                transcriptions: {
+                    create: this.mockTranscription.bind(this)
+                },
+                speech: {
+                    create: this.mockSpeech.bind(this)
+                }
+            }
+        };
         
         // Hume AI disabled due to deployment issues - using enhanced text-based emotion analysis
         this.humeEnabled = false;
@@ -1337,6 +1350,60 @@ Create a summary that would be useful for follow-up interactions.`
             'fr': { name: 'French', native: 'Français', flag: '🇫🇷' },
             'ar': { name: 'Arabic', native: 'العربية', flag: '🇸🇦' },
             'so': { name: 'Somali', native: 'Soomaali', flag: '🇸🇴' }
+        };
+    }
+
+    // Mock methods for demo purposes
+    async mockChatCompletion(options) {
+        const { messages } = options;
+        const userMessage = messages.find(m => m.role === 'user');
+        const content = userMessage?.content || '';
+        
+        // Simple mock translation logic
+        if (content.includes('Translate from') && content.includes('to')) {
+            const mockTranslations = {
+                'hello': 'hola',
+                'good morning': 'buenos días',
+                'thank you': 'gracias',
+                'how can I help you': '¿cómo puedo ayudarle?',
+                'account balance': 'saldo de cuenta',
+                'deposit': 'depósito',
+                'withdrawal': 'retiro',
+                'loan': 'préstamo'
+            };
+            
+            let translatedText = content.toLowerCase();
+            for (const [en, es] of Object.entries(mockTranslations)) {
+                translatedText = translatedText.replace(en, es);
+            }
+            
+            return {
+                choices: [{
+                    message: {
+                        content: translatedText
+                    }
+                }]
+            };
+        }
+        
+        // Default response
+        return {
+            choices: [{
+                message: {
+                    content: 'Mock response for demo purposes'
+                }
+            }]
+        };
+    }
+
+    async mockTranscription(options) {
+        return 'Hello, I need help with my account balance';
+    }
+
+    async mockSpeech(options) {
+        // Return a small mock audio buffer
+        return {
+            arrayBuffer: () => Promise.resolve(new ArrayBuffer(1024))
         };
     }
 }
