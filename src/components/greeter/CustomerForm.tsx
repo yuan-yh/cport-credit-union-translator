@@ -18,86 +18,74 @@ const CustomerForm: React.FC<CustomerFormProps> = ({
     };
 
     return (
-        <div className="bg-white p-6 rounded-lg shadow-md">
-            <h3 className="text-lg font-semibold mb-4 text-gray-800">Customer Information</h3>
-
-            <form onSubmit={handleSubmit} className="space-y-4">
-                <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Name (Optional)
-                    </label>
+        <>
+            <div className="info-card">
+                <h3 className="card-title">👤 Customer Information</h3>
+                <div className="form-group">
+                    <label className="form-label">Customer Name (Optional)</label>
                     <input
                         type="text"
+                        className="form-input"
                         value={customerData.name || ''}
                         onChange={(e) => onCustomerDataChange({ ...customerData, name: e.target.value })}
-                        className="w-full p-2 border border-gray-300 rounded-md focus:ring-cport-blue focus:border-cport-blue"
-                        placeholder="Customer name"
+                        placeholder="Enter customer name"
                     />
                 </div>
-
-                <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Phone (Optional)
-                    </label>
+                <div className="form-group">
+                    <label className="form-label">Phone Number (Optional)</label>
                     <input
                         type="tel"
+                        className="form-input"
                         value={customerData.phone || ''}
                         onChange={(e) => onCustomerDataChange({ ...customerData, phone: e.target.value })}
-                        className="w-full p-2 border border-gray-300 rounded-md focus:ring-cport-blue focus:border-cport-blue"
                         placeholder="(207) 555-0123"
                     />
                 </div>
+            </div>
 
-                <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Service Type
-                    </label>
+            <div className="info-card">
+                <h3 className="card-title">🏦 Service Details</h3>
+                <div className="form-group">
+                    <label className="form-label">Transaction Type</label>
                     <select
+                        className="form-select"
                         value={customerData.serviceType || 'simple'}
                         onChange={(e) => onCustomerDataChange({ ...customerData, serviceType: e.target.value as 'simple' | 'complex' })}
-                        className="w-full p-2 border border-gray-300 rounded-md focus:ring-cport-blue focus:border-cport-blue"
                     >
-                        <option value="simple">Simple Transaction (Deposit, Withdrawal)</option>
-                        <option value="complex">Complex Service (Loans, New Account)</option>
+                        <option value="simple">Simple Transaction (Deposit/Withdrawal)</option>
+                        <option value="complex">Account Opening</option>
+                        <option value="complex">Loan Application</option>
+                        <option value="simple">General Banking Inquiry</option>
+                        <option value="complex">Complex Transaction</option>
+                        <option value="complex">Dispute Resolution</option>
                     </select>
                 </div>
-
-                <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Customer Mood
-                    </label>
+                <div className="form-group">
+                    <label className="form-label">Customer Mood</label>
                     <select
+                        className="form-select"
                         value={customerData.mood || 'calm'}
                         onChange={(e) => onCustomerDataChange({ ...customerData, mood: e.target.value as 'calm' | 'anxious' | 'urgent' })}
-                        className="w-full p-2 border border-gray-300 rounded-md focus:ring-cport-blue focus:border-cport-blue"
                     >
-                        <option value="calm">Calm</option>
-                        <option value="anxious">Anxious</option>
-                        <option value="urgent">Urgent</option>
+                        <option value="calm">Calm & Cooperative</option>
+                        <option value="anxious">Frustrated</option>
+                        <option value="anxious">Anxious/Nervous</option>
+                        <option value="calm">Happy/Satisfied</option>
+                        <option value="anxious">Confused</option>
+                        <option value="urgent">Urgent/Time-sensitive</option>
                     </select>
                 </div>
-
-                <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Notes
-                    </label>
+                <div className="form-group">
+                    <label className="form-label">Special Notes</label>
                     <textarea
+                        className="form-textarea"
                         value={customerData.notes || ''}
                         onChange={(e) => onCustomerDataChange({ ...customerData, notes: e.target.value })}
-                        rows={3}
-                        className="w-full p-2 border border-gray-300 rounded-md focus:ring-cport-blue focus:border-cport-blue"
-                        placeholder="Any special notes or requests..."
+                        placeholder="Any additional context or special requirements..."
                     />
                 </div>
-
-                <button
-                    type="submit"
-                    className="w-full bg-cport-blue text-white py-2 rounded-md hover:bg-cport-light transition-colors"
-                >
-                    Add to Queue
-                </button>
-            </form>
-        </div>
+            </div>
+        </>
     );
 };
 

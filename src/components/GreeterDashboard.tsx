@@ -31,55 +31,108 @@ const GreeterDashboard: React.FC = () => {
         setShowTranslation(false);
     };
 
+    const startInterpreterSession = () => {
+        setShowTranslation(true);
+    };
+
+    const addToQueue = () => {
+        if (customerData.name) {
+            handleCustomerSubmit(customerData);
+        } else {
+            alert('Please enter customer information first');
+        }
+    };
+
     return (
-        <div className="min-h-screen bg-gray-50">
-            <Header />
-
-            <div className="p-6">
-                <div className="max-w-6xl mx-auto">
-                    <div className="mb-6">
-                        <h2 className="text-2xl font-bold text-gray-800 mb-2">Welcome Center - Real-time Interpreter</h2>
-                        <p className="text-gray-600">Help customers get started with instant voice translation and route them to the right service</p>
-                    </div>
-
-                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                        {/* Language Selection */}
-                        <div className="lg:col-span-1">
-                            <LanguageSelector
-                                selectedLanguage={currentLanguage}
-                                onLanguageChange={setCurrentLanguage}
-                                onStartTranslation={() => setShowTranslation(true)}
-                            />
-                        </div>
-
-                        {/* Customer Information */}
-                        <div className="lg:col-span-1">
-                            <CustomerForm
-                                customerData={customerData}
-                                onCustomerDataChange={setCustomerData}
-                                onSubmit={handleCustomerSubmit}
-                            />
-                        </div>
-
-                        {/* Queue Status */}
-                        <div className="lg:col-span-1">
-                            <QueueAssignment customers={state.customers} />
+        <div className="welcome-page">
+            <div className="welcome-header">
+                <div className="header-content">
+                    <div className="brand">
+                        <div className="brand-icon">cP</div>
+                        <div className="brand-text">
+                            <h1>cPort Credit Union</h1>
+                            <p>Real-time Interpreter Center</p>
                         </div>
                     </div>
-
-                    {/* Real-time Interpreter Modal */}
-                    {showTranslation && (
-                        <StreamingVoiceTranslationPanel
-                            targetLanguage={currentLanguage}
-                            onClose={() => setShowTranslation(false)}
-                            onCustomerDataUpdate={(data) => {
-                                setCustomerData(prev => ({ ...prev, ...data }));
-                            }}
-                            currentCustomerData={customerData}
-                        />
-                    )}
+                    <div className="user-info">
+                        <div className="user-avatar">JD</div>
+                        <button className="sign-out-btn" onClick={() => window.location.href = '/'}>Sign Out</button>
+                    </div>
                 </div>
             </div>
+
+            <div className="welcome-content">
+                <div className="hero-section">
+                    <h1 className="hero-title">Professional Interpreter Services</h1>
+                    <p className="hero-description">
+                        Connect instantly with certified interpreters to provide seamless banking services 
+                        to customers in their preferred language. Select a language and start helping customers today.
+                    </p>
+                </div>
+
+                <div className="main-grid">
+                    <div className="language-panel">
+                        <h2 className="panel-title">
+                            <div className="panel-icon">🌍</div>
+                            Select Customer Language
+                        </h2>
+                        
+                        <LanguageSelector
+                            selectedLanguage={currentLanguage}
+                            onLanguageChange={setCurrentLanguage}
+                            onStartTranslation={startInterpreterSession}
+                        />
+
+                        <div className="action-section">
+                            <button className="action-btn btn-primary" onClick={startInterpreterSession}>
+                                🎧 Start Live Session
+                            </button>
+                            <button className="action-btn btn-secondary" onClick={addToQueue}>
+                                📋 Add to Queue
+                            </button>
+                        </div>
+                    </div>
+
+                    <div className="customer-panel">
+                        <CustomerForm
+                            customerData={customerData}
+                            onCustomerDataChange={setCustomerData}
+                            onSubmit={handleCustomerSubmit}
+                        />
+                    </div>
+                </div>
+
+                <div className="status-grid">
+                    <div className="status-card">
+                        <div className="status-header">
+                            <span className="status-title">Teller Queue</span>
+                            <span style={{color: '#10b981'}}>●</span>
+                        </div>
+                        <div className="status-value">{state.customers.filter(c => c.status === 'waiting').length}</div>
+                        <div className="status-description">Available immediately</div>
+                    </div>
+                    <div className="status-card">
+                        <div className="status-header">
+                            <span className="status-title">Private Consultation</span>
+                            <span style={{color: '#10b981'}}>●</span>
+                        </div>
+                        <div className="status-value">{state.customers.filter(c => c.status === 'in-service').length}</div>
+                        <div className="status-description">Available immediately</div>
+                    </div>
+                </div>
+            </div>
+
+            {/* Real-time Interpreter Modal */}
+            {showTranslation && (
+                <StreamingVoiceTranslationPanel
+                    targetLanguage={currentLanguage}
+                    onClose={() => setShowTranslation(false)}
+                    onCustomerDataUpdate={(data) => {
+                        setCustomerData(prev => ({ ...prev, ...data }));
+                    }}
+                    currentCustomerData={customerData}
+                />
+            )}
         </div>
     );
 };

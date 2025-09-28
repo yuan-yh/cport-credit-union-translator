@@ -21,41 +21,30 @@ const LoginScreen: React.FC = () => {
     };
 
     return (
-        <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-cport-blue to-cport-light">
-            <div className="bg-white p-8 rounded-lg shadow-lg max-w-md w-full">
-                <div className="text-center mb-8">
-                    <h1 className="text-3xl font-bold text-cport-blue">cPort Credit Union</h1>
-                    <p className="text-gray-600 mt-2">Translation Tool - Prototype</p>
-                </div>
-
-                <div className="space-y-4">
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Select Your Role
-                        </label>
-                        <select
-                            value={selectedRole}
-                            onChange={(e) => setSelectedRole(e.target.value as UserRole)}
-                            className="w-full p-3 border border-gray-300 rounded-md focus:ring-cport-blue focus:border-cport-blue"
-                        >
-                            <option value="greeter">Greeter (Universal Banker)</option>
-                            <option value="teller">Teller</option>
-                            <option value="consultor">Private Consultor</option>
-                            <option value="admin">Administrator</option>
-                        </select>
-                    </div>
-
-                    <button
-                        onClick={handleLogin}
-                        className="w-full bg-cport-blue text-white py-3 rounded-md hover:bg-cport-light transition-colors font-medium"
-                    >
-                        Sign In
-                    </button>
-                </div>
-
-                <div className="mt-6 text-xs text-gray-500 text-center">
-                    <p>Prototype Demo - No actual authentication required</p>
-                </div>
+        <div className="login-page">
+            <div className="login-container fade-in">
+                <div className="login-logo">cP</div>
+                <h1 className="login-title">cPort Credit Union</h1>
+                <p className="login-subtitle">Translation Tool - Professional Access</p>
+                
+                <select 
+                    className="role-selector"
+                    value={selectedRole}
+                    onChange={(e) => setSelectedRole(e.target.value as UserRole)}
+                >
+                    <option value="greeter">Greeter (Universal Banker)</option>
+                    <option value="teller">Senior Teller</option>
+                    <option value="consultor">Customer Service Representative</option>
+                    <option value="admin">Loan Officer</option>
+                    <option value="admin">Branch Manager</option>
+                    <option value="admin">Assistant Manager</option>
+                </select>
+                
+                <button className="login-btn" onClick={handleLogin}>
+                    🔐 Access System
+                </button>
+                
+                <p className="demo-notice">Secure prototype environment - Authentication simulated</p>
             </div>
         </div>
     );
