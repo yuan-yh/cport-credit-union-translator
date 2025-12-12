@@ -1,0 +1,12 @@
+steps:
+  - name: gcr.io/cloud-builders/docker
+    args:
+      - build
+      - -f
+      - Dockerfile.frontend
+      - -t
+      - gcr.io/solid-choir-472118-q6/translation-frontend
+      - .
+images:
+  - gcr.io/solid-choir-472118-q6/translation-frontend
+
