@@ -1,5 +1,5 @@
 # Multi-stage build for optimized React app
-FROM node:18-alpine AS builder
+FROM node:22-alpine AS builder
 
 # Set working directory
 WORKDIR /app
@@ -13,7 +13,7 @@ COPY vite.config.ts ./
 COPY tsconfig*.json ./
 
 # Install dependencies
-RUN npm ci
+RUN npm ci --no-audit --no-fund
 
 # Build the app
 RUN npm run build

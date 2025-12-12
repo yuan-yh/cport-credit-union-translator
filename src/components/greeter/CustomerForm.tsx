@@ -18,44 +18,100 @@ const CustomerForm: React.FC<CustomerFormProps> = ({
     };
 
     return (
-        <div className="bg-white p-6 rounded-lg shadow-md">
-            <h3 className="text-lg font-semibold mb-4 text-gray-800">Customer Information</h3>
+        <div style={{
+            backgroundColor: '#1a1a1a',
+            padding: '24px',
+            borderRadius: '12px',
+            boxShadow: '0 5px 15px rgba(0, 0, 0, 0.4)',
+            border: '1px solid #333333'
+        }}>
+            <h3 style={{
+                fontSize: '20px',
+                fontWeight: '600',
+                marginBottom: '16px',
+                color: '#ffffff'
+            }}>
+                Customer Information
+            </h3>
 
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                 <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label style={{
+                        display: 'block',
+                        fontSize: '14px',
+                        fontWeight: '500',
+                        color: '#cccccc',
+                        marginBottom: '4px'
+                    }}>
                         Name (Optional)
                     </label>
                     <input
                         type="text"
                         value={customerData.name || ''}
                         onChange={(e) => onCustomerDataChange({ ...customerData, name: e.target.value })}
-                        className="w-full p-2 border border-gray-300 rounded-md focus:ring-cport-blue focus:border-cport-blue"
+                        style={{
+                            width: '100%',
+                            padding: '10px 15px',
+                            border: '1px solid #666666',
+                            borderRadius: '8px',
+                            fontSize: '15px',
+                            backgroundColor: '#333333',
+                            color: '#ffffff'
+                        }}
                         placeholder="Customer name"
                     />
                 </div>
 
                 <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label style={{
+                        display: 'block',
+                        fontSize: '14px',
+                        fontWeight: '500',
+                        color: '#cccccc',
+                        marginBottom: '4px'
+                    }}>
                         Phone (Optional)
                     </label>
                     <input
                         type="tel"
                         value={customerData.phone || ''}
                         onChange={(e) => onCustomerDataChange({ ...customerData, phone: e.target.value })}
-                        className="w-full p-2 border border-gray-300 rounded-md focus:ring-cport-blue focus:border-cport-blue"
+                        style={{
+                            width: '100%',
+                            padding: '10px 15px',
+                            border: '1px solid #666666',
+                            borderRadius: '8px',
+                            fontSize: '15px',
+                            backgroundColor: '#333333',
+                            color: '#ffffff'
+                        }}
                         placeholder="(207) 555-0123"
                     />
                 </div>
 
                 <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label style={{
+                        display: 'block',
+                        fontSize: '14px',
+                        fontWeight: '500',
+                        color: '#cccccc',
+                        marginBottom: '4px'
+                    }}>
                         Service Type
                     </label>
                     <select
                         value={customerData.serviceType || 'simple'}
                         onChange={(e) => onCustomerDataChange({ ...customerData, serviceType: e.target.value as 'simple' | 'complex' })}
-                        className="w-full p-2 border border-gray-300 rounded-md focus:ring-cport-blue focus:border-cport-blue"
+                        style={{
+                            width: '100%',
+                            padding: '10px 15px',
+                            border: '1px solid #666666',
+                            borderRadius: '8px',
+                            fontSize: '15px',
+                            backgroundColor: '#333333',
+                            color: '#ffffff',
+                            cursor: 'pointer'
+                        }}
                     >
                         <option value="simple">Simple Transaction (Deposit, Withdrawal)</option>
                         <option value="complex">Complex Service (Loans, New Account)</option>
@@ -63,13 +119,28 @@ const CustomerForm: React.FC<CustomerFormProps> = ({
                 </div>
 
                 <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label style={{
+                        display: 'block',
+                        fontSize: '14px',
+                        fontWeight: '500',
+                        color: '#cccccc',
+                        marginBottom: '4px'
+                    }}>
                         Customer Mood
                     </label>
                     <select
                         value={customerData.mood || 'calm'}
                         onChange={(e) => onCustomerDataChange({ ...customerData, mood: e.target.value as 'calm' | 'anxious' | 'urgent' })}
-                        className="w-full p-2 border border-gray-300 rounded-md focus:ring-cport-blue focus:border-cport-blue"
+                        style={{
+                            width: '100%',
+                            padding: '10px 15px',
+                            border: '1px solid #666666',
+                            borderRadius: '8px',
+                            fontSize: '15px',
+                            backgroundColor: '#333333',
+                            color: '#ffffff',
+                            cursor: 'pointer'
+                        }}
                     >
                         <option value="calm">Calm</option>
                         <option value="anxious">Anxious</option>
@@ -78,21 +149,49 @@ const CustomerForm: React.FC<CustomerFormProps> = ({
                 </div>
 
                 <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label style={{
+                        display: 'block',
+                        fontSize: '14px',
+                        fontWeight: '500',
+                        color: '#cccccc',
+                        marginBottom: '4px'
+                    }}>
                         Notes
                     </label>
                     <textarea
                         value={customerData.notes || ''}
                         onChange={(e) => onCustomerDataChange({ ...customerData, notes: e.target.value })}
                         rows={3}
-                        className="w-full p-2 border border-gray-300 rounded-md focus:ring-cport-blue focus:border-cport-blue"
+                        style={{
+                            width: '100%',
+                            padding: '10px 15px',
+                            border: '1px solid #666666',
+                            borderRadius: '8px',
+                            fontSize: '15px',
+                            backgroundColor: '#333333',
+                            color: '#ffffff',
+                            resize: 'vertical'
+                        }}
                         placeholder="Any special notes or requests..."
                     />
                 </div>
 
                 <button
                     type="submit"
-                    className="w-full bg-cport-blue text-white py-2 rounded-md hover:bg-cport-light transition-colors"
+                    style={{
+                        width: '100%',
+                        backgroundColor: '#1e40af',
+                        color: 'white',
+                        padding: '12px',
+                        borderRadius: '8px',
+                        border: 'none',
+                        fontSize: '16px',
+                        fontWeight: '500',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s ease'
+                    }}
+                    onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#3b82f6'}
+                    onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#1e40af'}
                 >
                     Add to Queue
                 </button>

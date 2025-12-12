@@ -54,202 +54,531 @@ const ConsultorDashboard: React.FC = () => {
     const activeCustomer = state.customers.find(c => c.id === currentCustomer);
 
     return (
-        <div className="min-h-screen bg-gray-50">
+        <div style={{ 
+            minHeight: '100vh', 
+            backgroundColor: '#000000',
+            display: 'flex',
+            flexDirection: 'column'
+        }}>
             <Header />
 
-            <div className="p-6">
-                <div className="max-w-7xl mx-auto">
-                    <div className="mb-6">
-                        <h2 className="text-2xl font-bold text-gray-800 mb-2">Private Consultation</h2>
-                        <p className="text-gray-600">Complex services: loans, new accounts, financial planning</p>
+            <div style={{ 
+                flex: 1,
+                display: 'flex',
+                justifyContent: 'center',
+                alignItems: 'flex-start',
+                padding: '24px',
+                backgroundColor: '#000000'
+            }}>
+                <div style={{ 
+                    maxWidth: '1600px', 
+                    width: '100%'
+                }}>
+                    <div style={{ marginBottom: '24px', textAlign: 'center' }}>
+                        <h2 style={{
+                            fontSize: '28px',
+                            fontWeight: 'bold',
+                            color: '#ffffff',
+                            marginBottom: '8px'
+                        }}>
+                            Private Consultation
+                        </h2>
+                        <p style={{ color: '#999999', fontSize: '16px', margin: 0 }}>
+                            Complex services: loans, new accounts, financial planning
+                        </p>
                     </div>
 
-                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <div style={{
+                        display: 'grid',
+                        gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))',
+                        gap: '24px',
+                        justifyContent: 'center'
+                    }}>
                         {/* Queue Management */}
-                        <div className="bg-white p-6 rounded-lg shadow-md">
-                            <h3 className="text-lg font-semibold mb-4 text-gray-800">
+                        <div style={{
+                            backgroundColor: '#1a1a1a',
+                            padding: '24px',
+                            borderRadius: '12px',
+                            boxShadow: '0 5px 15px rgba(0, 0, 0, 0.4)',
+                            border: '1px solid #333333'
+                        }}>
+                            <h3 style={{
+                                fontSize: '20px',
+                                fontWeight: '600',
+                                marginBottom: '16px',
+                                color: '#ffffff'
+                            }}>
                                 Consultation Queue ({complexQueueCustomers.length})
                             </h3>
 
                             {!currentCustomer ? (
                                 <div>
                                     {complexQueueCustomers.length > 0 ? (
-                                        <div className="space-y-3">
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                                             {complexQueueCustomers.map((customer, index) => (
-                                                <div key={customer.id} className={`p-3 rounded border ${index === 0 ? 'border-cport-green bg-green-50' : 'border-gray-200'
-                                                    }`}>
-                                                    <div className="flex justify-between items-start">
+                                                <div key={customer.id} style={{
+                                                    padding: '16px',
+                                                    borderRadius: '8px',
+                                                    border: index === 0 ? '2px solid #059669' : '1px solid #333333',
+                                                    backgroundColor: index === 0 ? '#004d00' : '#0a0a0a'
+                                                }}>
+                                                    <div style={{
+                                                        display: 'flex',
+                                                        justifyContent: 'space-between',
+                                                        alignItems: 'flex-start'
+                                                    }}>
                                                         <div>
-                                                            <p className="font-medium">{customer.name || 'Customer'}</p>
-                                                            <p className="text-sm text-gray-600">
+                                                            <p style={{
+                                                                fontWeight: '500',
+                                                                color: '#ffffff',
+                                                                margin: '0 0 4px 0'
+                                                            }}>
+                                                                {customer.name || 'Customer'}
+                                                            </p>
+                                                            <p style={{
+                                                                fontSize: '14px',
+                                                                color: '#999999',
+                                                                margin: '0 0 2px 0'
+                                                            }}>
                                                                 {customer.language.toUpperCase()}
                                                             </p>
-                                                            <p className="text-sm text-gray-600">
+                                                            <p style={{
+                                                                fontSize: '14px',
+                                                                color: '#999999',
+                                                                margin: 0
+                                                            }}>
                                                                 Est: {customer.estimatedWaitTime} min
                                                             </p>
                                                         </div>
                                                         {index === 0 && (
-                                                            <span className="text-xs bg-cport-green text-white px-2 py-1 rounded">
+                                                            <span style={{
+                                                                fontSize: '12px',
+                                                                backgroundColor: '#059669',
+                                                                color: 'white',
+                                                                padding: '4px 12px',
+                                                                borderRadius: '12px',
+                                                                fontWeight: '500'
+                                                            }}>
                                                                 NEXT
                                                             </span>
                                                         )}
                                                     </div>
                                                     {customer.notes && (
-                                                        <p className="text-sm text-gray-600 mt-2 italic">{customer.notes}</p>
+                                                        <p style={{
+                                                            fontSize: '14px',
+                                                            color: '#cccccc',
+                                                            marginTop: '8px',
+                                                            fontStyle: 'italic'
+                                                        }}>
+                                                            {customer.notes}
+                                                        </p>
                                                     )}
                                                 </div>
                                             ))}
 
                                             <button
                                                 onClick={handleServeNext}
-                                                className="w-full bg-cport-green text-white py-3 rounded-md hover:bg-green-600 transition-colors font-medium"
+                                                style={{
+                                                    width: '100%',
+                                                    backgroundColor: '#059669',
+                                                    color: 'white',
+                                                    padding: '15px',
+                                                    borderRadius: '8px',
+                                                    border: 'none',
+                                                    fontSize: '16px',
+                                                    fontWeight: '500',
+                                                    cursor: 'pointer',
+                                                    marginTop: '8px',
+                                                    transition: 'all 0.2s ease'
+                                                }}
+                                                onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#047857'}
+                                                onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#059669'}
                                             >
                                                 Begin Consultation
                                             </button>
                                         </div>
                                     ) : (
-                                        <div className="text-center py-8">
-                                            <p className="text-gray-500 mb-4">No consultations scheduled</p>
-                                            <div className="text-6xl mb-4">📋</div>
-                                            <p className="text-sm text-gray-400">Ready for complex services</p>
+                                        <div style={{ textAlign: 'center', padding: '32px 0' }}>
+                                            <p style={{ color: '#999999', marginBottom: '16px' }}>
+                                                No consultations scheduled
+                                            </p>
+                                            <div style={{ fontSize: '48px', marginBottom: '16px' }}>📋</div>
+                                            <p style={{ fontSize: '14px', color: '#666666' }}>
+                                                Ready for complex services
+                                            </p>
                                         </div>
                                     )}
                                 </div>
                             ) : (
-                                <div className="space-y-4">
-                                    <div className="bg-cport-green text-white p-4 rounded-md">
-                                        <h4 className="font-semibold">In Consultation</h4>
-                                        <p className="text-green-100">{activeCustomer?.name || 'Customer'}</p>
-                                        <p className="text-green-200 text-sm">
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                                    <div style={{
+                                        backgroundColor: '#004d00',
+                                        color: 'white',
+                                        padding: '20px',
+                                        borderRadius: '8px',
+                                        border: '1px solid #00cc00'
+                                    }}>
+                                        <h4 style={{ fontWeight: '600', margin: '0 0 4px 0' }}>
+                                            In Consultation
+                                        </h4>
+                                        <p style={{ color: '#66ff66', margin: '0 0 2px 0' }}>
+                                            {activeCustomer?.name || 'Customer'}
+                                        </p>
+                                        <p style={{ color: '#99ff99', fontSize: '14px', margin: 0 }}>
                                             Language: {activeCustomer?.language.toUpperCase()}
                                         </p>
                                     </div>
 
-                                    <div className="space-y-2">
-                                        <button
-                                            onClick={() => setShowTranslation(!showTranslation)}
-                                            className="w-full bg-cport-blue text-white py-2 rounded-md hover:bg-cport-light transition-colors"
-                                        >
-                                            {showTranslation ? 'Hide Translation' : 'Open Translation'}
-                                        </button>
+                                    <button
+                                        onClick={() => setShowTranslation(!showTranslation)}
+                                        style={{
+                                            width: '100%',
+                                            backgroundColor: '#1e40af',
+                                            color: 'white',
+                                            padding: '12px',
+                                            borderRadius: '8px',
+                                            border: 'none',
+                                            fontSize: '14px',
+                                            fontWeight: '500',
+                                            cursor: 'pointer',
+                                            transition: 'all 0.2s ease'
+                                        }}
+                                        onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#3b82f6'}
+                                        onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#1e40af'}
+                                    >
+                                        {showTranslation ? 'Hide Translation' : 'Open Translation'}
+                                    </button>
 
-                                        <button
-                                            onClick={handleCompleteService}
-                                            className="w-full bg-gray-600 text-white py-2 rounded-md hover:bg-gray-700 transition-colors"
-                                        >
-                                            Complete Consultation
-                                        </button>
-                                    </div>
+                                    <button
+                                        onClick={handleCompleteService}
+                                        style={{
+                                            width: '100%',
+                                            backgroundColor: '#555555',
+                                            color: 'white',
+                                            padding: '12px',
+                                            borderRadius: '8px',
+                                            border: 'none',
+                                            fontSize: '14px',
+                                            fontWeight: '500',
+                                            cursor: 'pointer',
+                                            transition: 'all 0.2s ease'
+                                        }}
+                                        onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#666666'}
+                                        onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#555555'}
+                                    >
+                                        Complete Consultation
+                                    </button>
                                 </div>
                             )}
                         </div>
 
                         {/* Service Progress */}
-                        <div className="bg-white p-6 rounded-lg shadow-md">
-                            <h3 className="text-lg font-semibold mb-4 text-gray-800">Service Progress</h3>
+                        <div style={{
+                            backgroundColor: '#1a1a1a',
+                            padding: '24px',
+                            borderRadius: '12px',
+                            boxShadow: '0 5px 15px rgba(0, 0, 0, 0.4)',
+                            border: '1px solid #333333'
+                        }}>
+                            <h3 style={{
+                                fontSize: '20px',
+                                fontWeight: '600',
+                                marginBottom: '16px',
+                                color: '#ffffff'
+                            }}>
+                                Service Progress
+                            </h3>
 
                             {currentCustomer ? (
-                                <div className="space-y-4">
-                                    <div className="mb-4">
-                                        <div className="flex justify-between text-sm mb-2">
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                                    <div style={{ marginBottom: '8px' }}>
+                                        <div style={{
+                                            display: 'flex',
+                                            justifyContent: 'space-between',
+                                            fontSize: '14px',
+                                            marginBottom: '8px',
+                                            color: '#cccccc'
+                                        }}>
                                             <span>Progress</span>
                                             <span>{Math.round((serviceProgress / (serviceSteps.length - 1)) * 100)}%</span>
                                         </div>
-                                        <div className="w-full bg-gray-200 rounded-full h-2">
+                                        <div style={{
+                                            width: '100%',
+                                            backgroundColor: '#333333',
+                                            borderRadius: '9999px',
+                                            height: '8px'
+                                        }}>
                                             <div
-                                                className="bg-cport-green h-2 rounded-full transition-all duration-300"
-                                                style={{ width: `${(serviceProgress / (serviceSteps.length - 1)) * 100}%` }}
+                                                style={{
+                                                    backgroundColor: '#059669',
+                                                    height: '8px',
+                                                    borderRadius: '9999px',
+                                                    transition: 'all 0.3s',
+                                                    width: `${(serviceProgress / (serviceSteps.length - 1)) * 100}%`
+                                                }}
                                             ></div>
                                         </div>
                                     </div>
 
-                                    <div className="space-y-2">
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                                         {serviceSteps.map((step, index) => (
-                                            <div key={index} className={`p-2 rounded text-sm ${index < serviceProgress ? 'bg-green-100 text-green-800' :
-                                                    index === serviceProgress ? 'bg-blue-100 text-blue-800 font-medium' :
-                                                        'bg-gray-100 text-gray-600'
-                                                }`}>
-                                                <div className="flex items-center">
-                                                    <div className={`w-4 h-4 rounded-full mr-2 ${index < serviceProgress ? 'bg-green-500' :
-                                                            index === serviceProgress ? 'bg-blue-500' :
-                                                                'bg-gray-400'
-                                                        }`}></div>
+                                            <div key={index} style={{
+                                                padding: '12px',
+                                                borderRadius: '8px',
+                                                fontSize: '14px',
+                                                backgroundColor: index < serviceProgress ? '#004d00' :
+                                                    index === serviceProgress ? '#001f3f' : '#0a0a0a',
+                                                color: index < serviceProgress ? '#66ff66' :
+                                                    index === serviceProgress ? '#66b3ff' : '#666666',
+                                                border: index < serviceProgress ? '1px solid #00cc00' :
+                                                    index === serviceProgress ? '1px solid #0066cc' : '1px solid #333333',
+                                                fontWeight: index === serviceProgress ? '500' : '400'
+                                            }}>
+                                                <div style={{ display: 'flex', alignItems: 'center' }}>
+                                                    <div style={{
+                                                        width: '16px',
+                                                        height: '16px',
+                                                        borderRadius: '50%',
+                                                        marginRight: '8px',
+                                                        backgroundColor: index < serviceProgress ? '#059669' :
+                                                            index === serviceProgress ? '#3b82f6' : '#666666'
+                                                    }}></div>
                                                     {step}
                                                 </div>
                                             </div>
                                         ))}
                                     </div>
 
-                                    <div className="flex space-x-2">
+                                    <div style={{ display: 'flex', gap: '8px' }}>
                                         <button
                                             onClick={() => setServiceProgress(Math.max(0, serviceProgress - 1))}
                                             disabled={serviceProgress === 0}
-                                            className="flex-1 bg-gray-300 text-gray-700 py-2 rounded text-sm hover:bg-gray-400 disabled:opacity-50"
+                                            style={{
+                                                flex: 1,
+                                                backgroundColor: serviceProgress === 0 ? '#333333' : '#555555',
+                                                color: serviceProgress === 0 ? '#666666' : '#ffffff',
+                                                padding: '10px',
+                                                borderRadius: '6px',
+                                                border: 'none',
+                                                fontSize: '14px',
+                                                cursor: serviceProgress === 0 ? 'not-allowed' : 'pointer'
+                                            }}
                                         >
                                             Previous Step
                                         </button>
                                         <button
                                             onClick={() => setServiceProgress(Math.min(serviceSteps.length - 1, serviceProgress + 1))}
                                             disabled={serviceProgress === serviceSteps.length - 1}
-                                            className="flex-1 bg-cport-blue text-white py-2 rounded text-sm hover:bg-cport-light disabled:opacity-50"
+                                            style={{
+                                                flex: 1,
+                                                backgroundColor: serviceProgress === serviceSteps.length - 1 ? '#333333' : '#1e40af',
+                                                color: serviceProgress === serviceSteps.length - 1 ? '#666666' : '#ffffff',
+                                                padding: '10px',
+                                                borderRadius: '6px',
+                                                border: 'none',
+                                                fontSize: '14px',
+                                                cursor: serviceProgress === serviceSteps.length - 1 ? 'not-allowed' : 'pointer'
+                                            }}
                                         >
                                             Next Step
                                         </button>
                                     </div>
                                 </div>
                             ) : (
-                                <div className="text-center py-8">
-                                    <p className="text-gray-500">No active consultation</p>
+                                <div style={{ textAlign: 'center', padding: '32px 0' }}>
+                                    <p style={{ color: '#999999' }}>No active consultation</p>
                                 </div>
                             )}
                         </div>
 
                         {/* Document Tools */}
-                        <div className="bg-white p-6 rounded-lg shadow-md">
-                            <h3 className="text-lg font-semibold mb-4 text-gray-800">Document Tools</h3>
+                        <div style={{
+                            backgroundColor: '#1a1a1a',
+                            padding: '24px',
+                            borderRadius: '12px',
+                            boxShadow: '0 5px 15px rgba(0, 0, 0, 0.4)',
+                            border: '1px solid #333333'
+                        }}>
+                            <h3 style={{
+                                fontSize: '20px',
+                                fontWeight: '600',
+                                marginBottom: '16px',
+                                color: '#ffffff'
+                            }}>
+                                Document Tools
+                            </h3>
 
-                            <div className="space-y-3">
-                                <div className="p-3 border rounded-md">
-                                    <h4 className="font-medium text-sm mb-2">Loan Calculator</h4>
-                                    <div className="space-y-2 text-xs">
-                                        <div className="flex justify-between">
-                                            <span>Amount:</span>
-                                            <input type="number" placeholder="$25,000" className="w-20 px-1 border rounded" />
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                                <div style={{
+                                    padding: '12px',
+                                    border: '1px solid #333333',
+                                    borderRadius: '8px',
+                                    backgroundColor: '#0a0a0a'
+                                }}>
+                                    <h4 style={{
+                                        fontWeight: '500',
+                                        fontSize: '14px',
+                                        marginBottom: '8px',
+                                        color: '#ffffff'
+                                    }}>
+                                        Loan Calculator
+                                    </h4>
+                                    <div style={{
+                                        display: 'flex',
+                                        flexDirection: 'column',
+                                        gap: '8px',
+                                        fontSize: '12px'
+                                    }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                            <span style={{ color: '#cccccc' }}>Amount:</span>
+                                            <input
+                                                type="number"
+                                                placeholder="$25,000"
+                                                style={{
+                                                    width: '100px',
+                                                    padding: '4px 8px',
+                                                    border: '1px solid #666666',
+                                                    borderRadius: '4px',
+                                                    backgroundColor: '#333333',
+                                                    color: '#ffffff'
+                                                }}
+                                            />
                                         </div>
-                                        <div className="flex justify-between">
-                                            <span>Rate:</span>
-                                            <input type="number" placeholder="5.5%" className="w-20 px-1 border rounded" />
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                            <span style={{ color: '#cccccc' }}>Rate:</span>
+                                            <input
+                                                type="number"
+                                                placeholder="5.5%"
+                                                style={{
+                                                    width: '100px',
+                                                    padding: '4px 8px',
+                                                    border: '1px solid #666666',
+                                                    borderRadius: '4px',
+                                                    backgroundColor: '#333333',
+                                                    color: '#ffffff'
+                                                }}
+                                            />
                                         </div>
-                                        <div className="flex justify-between">
-                                            <span>Term:</span>
-                                            <input type="number" placeholder="60 mo" className="w-20 px-1 border rounded" />
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                            <span style={{ color: '#cccccc' }}>Term:</span>
+                                            <input
+                                                type="number"
+                                                placeholder="60 mo"
+                                                style={{
+                                                    width: '100px',
+                                                    padding: '4px 8px',
+                                                    border: '1px solid #666666',
+                                                    borderRadius: '4px',
+                                                    backgroundColor: '#333333',
+                                                    color: '#ffffff'
+                                                }}
+                                            />
                                         </div>
-                                        <button className="w-full bg-blue-500 text-white py-1 rounded text-xs">
+                                        <button style={{
+                                            width: '100%',
+                                            backgroundColor: '#3b82f6',
+                                            color: 'white',
+                                            padding: '6px',
+                                            borderRadius: '4px',
+                                            border: 'none',
+                                            fontSize: '12px',
+                                            cursor: 'pointer'
+                                        }}>
                                             Calculate
                                         </button>
                                     </div>
                                 </div>
 
-                                <div className="p-3 border rounded-md">
-                                    <h4 className="font-medium text-sm mb-2">Document Upload</h4>
-                                    <div className="space-y-2">
-                                        <input type="file" className="text-xs" />
-                                        <button className="w-full bg-green-500 text-white py-1 rounded text-xs">
+                                <div style={{
+                                    padding: '12px',
+                                    border: '1px solid #333333',
+                                    borderRadius: '8px',
+                                    backgroundColor: '#0a0a0a'
+                                }}>
+                                    <h4 style={{
+                                        fontWeight: '500',
+                                        fontSize: '14px',
+                                        marginBottom: '8px',
+                                        color: '#ffffff'
+                                    }}>
+                                        Document Upload
+                                    </h4>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                        <input
+                                            type="file"
+                                            style={{
+                                                fontSize: '12px',
+                                                color: '#cccccc',
+                                                width: '100%'
+                                            }}
+                                        />
+                                        <button style={{
+                                            width: '100%',
+                                            backgroundColor: '#059669',
+                                            color: 'white',
+                                            padding: '6px',
+                                            borderRadius: '4px',
+                                            border: 'none',
+                                            fontSize: '12px',
+                                            cursor: 'pointer'
+                                        }}>
                                             Translate Document
                                         </button>
                                     </div>
                                 </div>
 
-                                <div className="p-3 border rounded-md">
-                                    <h4 className="font-medium text-sm mb-2">Quick Phrases</h4>
-                                    <div className="space-y-1">
-                                        <button className="w-full bg-gray-200 text-gray-700 py-1 rounded text-xs">
+                                <div style={{
+                                    padding: '12px',
+                                    border: '1px solid #333333',
+                                    borderRadius: '8px',
+                                    backgroundColor: '#0a0a0a'
+                                }}>
+                                    <h4 style={{
+                                        fontWeight: '500',
+                                        fontSize: '14px',
+                                        marginBottom: '8px',
+                                        color: '#ffffff'
+                                    }}>
+                                        Quick Phrases
+                                    </h4>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                        <button style={{
+                                            width: '100%',
+                                            backgroundColor: '#333333',
+                                            color: '#cccccc',
+                                            padding: '6px',
+                                            borderRadius: '4px',
+                                            border: 'none',
+                                            fontSize: '12px',
+                                            cursor: 'pointer',
+                                            textAlign: 'left'
+                                        }}>
                                             "Let me explain this form..."
                                         </button>
-                                        <button className="w-full bg-gray-200 text-gray-700 py-1 rounded text-xs">
+                                        <button style={{
+                                            width: '100%',
+                                            backgroundColor: '#333333',
+                                            color: '#cccccc',
+                                            padding: '6px',
+                                            borderRadius: '4px',
+                                            border: 'none',
+                                            fontSize: '12px',
+                                            cursor: 'pointer',
+                                            textAlign: 'left'
+                                        }}>
                                             "What is your monthly income?"
                                         </button>
-                                        <button className="w-full bg-gray-200 text-gray-700 py-1 rounded text-xs">
+                                        <button style={{
+                                            width: '100%',
+                                            backgroundColor: '#333333',
+                                            color: '#cccccc',
+                                            padding: '6px',
+                                            borderRadius: '4px',
+                                            border: 'none',
+                                            fontSize: '12px',
+                                            cursor: 'pointer',
+                                            textAlign: 'left'
+                                        }}>
                                             "This is the interest rate..."
                                         </button>
                                     </div>
@@ -258,11 +587,21 @@ const ConsultorDashboard: React.FC = () => {
                         </div>
                     </div>
 
-                    {/* Translation Modal - unified across roles */}
+                    {/* Translation Modal */}
                     {showTranslation && activeCustomer && (
                         <StreamingVoiceTranslationPanel
                             targetLanguage={activeCustomer.language}
                             onClose={() => setShowTranslation(false)}
+                            onCustomerDataUpdate={(data) => {
+                                dispatch({
+                                    type: 'UPDATE_CUSTOMER',
+                                    payload: {
+                                        id: activeCustomer.id,
+                                        updates: data
+                                    }
+                                });
+                            }}
+                            currentCustomerData={activeCustomer}
                         />
                     )}
                 </div>

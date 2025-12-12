@@ -37,14 +37,11 @@ const StreamingVoiceTranslationPanel: React.FC<StreamingVoiceTranslationPanelPro
     const [currentTurn, setCurrentTurn] = useState<'customer' | 'staff'>('customer');
     const [audioLevel, setAudioLevel] = useState(0);
     const [status, setStatus] = useState('Ready to listen');
-    // const [extractedInfo, setExtractedInfo] = useState<string>('');
-    // const [moodInfo, setMoodInfo] = useState<string>('');
     const [currentPartialText, setCurrentPartialText] = useState('');
     const [currentTranslatedText, setCurrentTranslatedText] = useState('');
     const [isSpeaking, setIsSpeaking] = useState(false);
     const isSpeakingRef = useRef(false);
     
-    // Simple processing timer
     const deliveryTimerRef = useRef<number | null>(null);
 
     const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -55,27 +52,17 @@ const StreamingVoiceTranslationPanel: React.FC<StreamingVoiceTranslationPanelPro
     const animationIdRef = useRef<number | null>(null);
     const socketRef = useRef<Socket | null>(null);
     const sessionIdRef = useRef<string>('');
-    // const audioChunksRef = useRef<Blob[]>([]);
-    // const recordingIntervalRef = useRef<number | null>(null);
     const lastFinalBlobRef = useRef<Blob | null>(null);
     
-    // Voice Activity Detection - Simple fixed threshold
-    const baseThreshold = 0.03; // Higher fixed threshold to ignore background noise
+    const baseThreshold = 0.03;
     const [vadThreshold, setVadThreshold] = useState(0.03);
-    // const silenceTimeout = 1000; // 1 second of silence before processing
-    // const silenceDuration = 1500; // Need 1.5 seconds of silence to trigger processing
     const silenceTimerRef = useRef<number | null>(null);
     const isRecordingRef = useRef<boolean>(false);
     const currentAudioChunksRef = useRef<Blob[]>([]);
     const silenceCountRef = useRef<number>(0);
-    const requiredSilenceFrames = 100; // Need 100 frames (~2 seconds) of sustained silence
+    const requiredSilenceFrames = 100;
     
-    // Voice learning system
     const voiceLevelsRef = useRef<number[]>([]);
-    // const backgroundLevelsRef = useRef<number[]>([]);
-    // const isLearningRef = useRef<boolean>(false);
-    // const learningFramesRef = useRef<number>(0);
-    // const maxLearningFrames = 60; // Learn for 3 seconds
 
     // Initialize WebSocket connection
     useEffect(() => {
@@ -105,7 +92,6 @@ const StreamingVoiceTranslationPanel: React.FC<StreamingVoiceTranslationPanelPro
             playAudioFromBase64(data.audioBuffer);
             setStatus('Playing translation...');
             
-            // Add to conversation history
             const newEntry: StreamingTranslationEntry = {
                 originalText: currentPartialText,
                 translatedText: data.translatedText,
@@ -115,7 +101,6 @@ const StreamingVoiceTranslationPanel: React.FC<StreamingVoiceTranslationPanelPro
             };
             setConversationHistory(prev => [...prev, newEntry]);
 
-            // Trigger combined finalize call to populate customer data and mood
             try {
                 if (onCustomerDataUpdate) {
                     finalizeTurnPopulate(currentPartialText, data.translatedText);
@@ -124,7 +109,6 @@ const StreamingVoiceTranslationPanel: React.FC<StreamingVoiceTranslationPanelPro
                 console.log('Background finalize failed:', e);
             }
             
-            // Switch turn
             setCurrentTurn(prev => prev === 'customer' ? 'staff' : 'customer');
             setCurrentPartialText('');
             setCurrentTranslatedText('');
@@ -148,7 +132,6 @@ const StreamingVoiceTranslationPanel: React.FC<StreamingVoiceTranslationPanelPro
         };
     }, [API_BASE, currentTurn]);
 
-    // Initialize audio context for waveform visualization
     useEffect(() => {
         audioPreloadRef.current = new Audio();
         audioPreloadRef.current.preload = 'auto';
@@ -171,7 +154,6 @@ const StreamingVoiceTranslationPanel: React.FC<StreamingVoiceTranslationPanelPro
         };
     }, []);
 
-    // Handle escape key to close modal
     useEffect(() => {
         const handleEscape = (event: KeyboardEvent) => {
             if (event.key === 'Escape') {
@@ -183,7 +165,6 @@ const StreamingVoiceTranslationPanel: React.FC<StreamingVoiceTranslationPanelPro
         return () => document.removeEventListener('keydown', handleEscape);
     }, [onClose]);
 
-    // Cleanup on unmount
     useEffect(() => {
         return () => {
             if (isListening) {
@@ -192,7 +173,6 @@ const StreamingVoiceTranslationPanel: React.FC<StreamingVoiceTranslationPanelPro
         };
     }, [isListening]);
 
-    // Cleanup on unmount
     useEffect(() => {
         return () => {
             stopListening();
@@ -245,7 +225,6 @@ const StreamingVoiceTranslationPanel: React.FC<StreamingVoiceTranslationPanelPro
         }
     };
 
-    // Post helpers
     const postJson = async (url: string, body: any) => {
         const res = await fetch(url, {
             method: 'POST',
@@ -256,74 +235,8 @@ const StreamingVoiceTranslationPanel: React.FC<StreamingVoiceTranslationPanelPro
         return res.json();
     };
 
-    const extractAndPopulateCustomerData = async (latestOriginalText: string) => {
-        try {
-            let inferredSourceLanguage = currentTurn === 'customer' ? targetLanguage : 'en';
-            // Prefer the provided text; if empty, fall back to most recent conversation entry
-            const fallbackEntry = conversationHistory[conversationHistory.length - 1];
-            let safeText = (latestOriginalText && latestOriginalText.trim())
-                ? latestOriginalText
-                : (fallbackEntry?.originalText || '');
-
-            // If original text is empty (e.g., only translated text available),
-            // use translated text for extraction in English.
-            if (!safeText && fallbackEntry?.translatedText) {
-                safeText = fallbackEntry.translatedText;
-                inferredSourceLanguage = 'en';
-            }
-
-            if (!safeText) {
-                console.log('Skipping extraction: no original text available');
-                return;
-            }
-            const payload = {
-                text: safeText,
-                sourceLanguage: inferredSourceLanguage,
-                conversationHistory: conversationHistory.map(e => ({
-                    turn: e.turn,
-                    originalText: e.originalText,
-                    translatedText: e.translatedText,
-                    timestamp: e.timestamp
-                })),
-                currentCustomerData
-            };
-            const result = await postJson(`${API_BASE}/api/extract-customer-info`, payload);
-            if (result && result.hasUpdates && result.updatedCustomerData && onCustomerDataUpdate) {
-                const upd = result.updatedCustomerData || {};
-                onCustomerDataUpdate({
-                    name: upd.name || currentCustomerData.name,
-                    phone: upd.phone || currentCustomerData.phone,
-                    notes: upd.notes || currentCustomerData.notes
-                } as any);
-            }
-        } catch (err) {
-            console.log('Customer data extraction failed:', err);
-        }
-    };
-
-    const analyzeAndPopulateMood = async () => {
-        if (!lastFinalBlobRef.current || !onCustomerDataUpdate) return;
-        try {
-            const form = new FormData();
-            form.append('audio', lastFinalBlobRef.current, 'final.webm');
-            const res = await fetch(`${API_BASE}/api/analyze-emotion`, { method: 'POST', body: form });
-            if (!res.ok) throw new Error(`Emotion API ${res.status}`);
-            const data = await res.json();
-            const primary = (data?.primaryEmotion?.name || data?.emotions?.[0]?.name || '').toLowerCase();
-            const mappedMood = (['anger','frustration','stress','impatience','urgent'].includes(primary)
-                ? 'urgent'
-                : ['anxiety','fear','sadness','nervous','anxious'].includes(primary)
-                ? 'anxious'
-                : 'calm') as 'calm' | 'anxious' | 'urgent';
-            onCustomerDataUpdate({ mood: mappedMood } as any);
-        } catch (e) {
-            console.log('Emotion analysis failed:', e);
-        }
-    };
-
     const finalizeTurnPopulate = async (latestOriginalText: string, latestTranslatedText: string) => {
         try {
-            // Prepare optional encoded audio for emotion (best effort)
             let audioBase64: string | undefined;
             if (lastFinalBlobRef.current) {
                 const b = await lastFinalBlobRef.current.arrayBuffer();
@@ -375,42 +288,35 @@ const StreamingVoiceTranslationPanel: React.FC<StreamingVoiceTranslationPanelPro
                     autoGainControl: true,
                     sampleRate: 48000,
                     channelCount: 1,
-                    // latency: 0.01 // Ultra-low latency - not supported in MediaTrackConstraints
                 } 
             });
             console.log('🎤 Got audio stream:', stream);
             
-            // Set up optimized audio context for VAD (only if not already created)
             if (!audioContextRef.current || audioContextRef.current.state === 'closed') {
                 audioContextRef.current = new AudioContext({
                     sampleRate: 48000,
-                    latencyHint: 'interactive' // Ultra-low latency
+                    latencyHint: 'interactive'
                 });
             }
             analyserRef.current = audioContextRef.current.createAnalyser();
             const source = audioContextRef.current.createMediaStreamSource(stream);
             source.connect(analyserRef.current);
             
-            // Optimized settings for ultra-fast VAD
-            analyserRef.current.fftSize = 128; // Smaller FFT for faster processing
-            analyserRef.current.smoothingTimeConstant = 0.3; // Less smoothing for faster response
+            analyserRef.current.fftSize = 128;
+            analyserRef.current.smoothingTimeConstant = 0.3;
             analyserRef.current.minDecibels = -90;
             analyserRef.current.maxDecibels = -10;
             const bufferLength = analyserRef.current.frequencyBinCount;
             dataArrayRef.current = new Uint8Array(bufferLength);
 
-            // Store the original stream for recording
             window.currentAudioStream = stream;
             console.log('🎤 Stored audio stream for recording');
 
-            // Reset VAD system
             setVadThreshold(baseThreshold);
             setStatus('Ready - speak now');
 
-            // Start VAD monitoring
             startVADMonitoring();
 
-            // Start streaming translation session
             if (socketRef.current) {
                 const sessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
                 sessionIdRef.current = sessionId;
@@ -442,22 +348,18 @@ const StreamingVoiceTranslationPanel: React.FC<StreamingVoiceTranslationPanelPro
 
             analyserRef.current.getByteFrequencyData(dataArrayRef.current);
             
-            // Calculate average frequency data for VAD
             const average = dataArrayRef.current.reduce((sum, value) => sum + value, 0) / dataArrayRef.current.length;
             const normalizedLevel = average / 255;
             
             setAudioLevel(normalizedLevel);
             
-            // Log audio level every 30 frames (about every 0.5 seconds)
             frameCount++;
             if (frameCount % 30 === 0) {
                 const status = normalizedLevel > vadThreshold ? 'SPEECH' : 'SILENCE';
                 console.log(`🎤 Audio level: ${normalizedLevel.toFixed(4)} (${status}) - threshold: ${vadThreshold} - isSpeaking: ${isSpeakingRef.current} - silenceCount: ${silenceCountRef.current}`);
             }
 
-            // Ultra-low latency Voice Activity Detection
             if (normalizedLevel > vadThreshold) {
-                // Speech detected - start processing immediately
                 console.log('⚡ Speech detected! Starting immediate processing...', normalizedLevel.toFixed(4));
                 if (!isRecordingRef.current) {
                     console.log('⚡ Starting ultra-fast recording...');
@@ -467,39 +369,31 @@ const StreamingVoiceTranslationPanel: React.FC<StreamingVoiceTranslationPanelPro
                 setIsSpeaking(true);
                 setStatus(`⚡ Processing in real-time...`);
                 
-                // Learn from user's voice levels
                 voiceLevelsRef.current.push(normalizedLevel);
                 if (voiceLevelsRef.current.length > 20) {
-                    voiceLevelsRef.current.shift(); // Keep only last 20 samples
+                    voiceLevelsRef.current.shift();
                 }
                 
-                // Reset silence counter when speech resumes
                 silenceCountRef.current = 0;
                 
-                // Clear any existing timer
                 if (silenceTimerRef.current) {
                     clearTimeout(silenceTimerRef.current);
                     silenceTimerRef.current = null;
                 }
             } else {
-                // Silence detected - only count if we were previously speaking
                 if (isSpeakingRef.current) {
                     silenceCountRef.current++;
                     const silenceProgress = Math.min(silenceCountRef.current / requiredSilenceFrames * 100, 100);
                     console.log(`🔇 Silence frame ${silenceCountRef.current}/${requiredSilenceFrames} (${silenceProgress.toFixed(1)}%) - level: ${normalizedLevel.toFixed(4)}`);
                     
-                    // Update status to show silence countdown
                     setStatus(`Listening... (${Math.max(0, 2 - (silenceCountRef.current / 50)).toFixed(1)}s silence remaining)`);
                     
-                    // Check if we have enough sustained silence frames (2 seconds)
                     if (silenceCountRef.current >= requiredSilenceFrames) {
                         console.log('⏰ 2 seconds of silence detected, automatically stopping recording...');
-                        // Call the same function as the "Stop Listening" button
                         stopListening();
                         silenceCountRef.current = 0;
                     }
                 } else {
-                    // Reset silence counter if we're not in a speaking session
                     silenceCountRef.current = 0;
                 }
             }
@@ -517,7 +411,6 @@ const StreamingVoiceTranslationPanel: React.FC<StreamingVoiceTranslationPanelPro
         isRecordingRef.current = true;
         currentAudioChunksRef.current = [];
         
-        // Use the original audio stream
         const stream = window.currentAudioStream;
         console.log('🎤 Audio stream available:', !!stream);
         if (stream) {
@@ -531,9 +424,7 @@ const StreamingVoiceTranslationPanel: React.FC<StreamingVoiceTranslationPanelPro
                     console.log('🎤 Audio data received:', event.data.size, 'bytes');
                     currentAudioChunksRef.current.push(event.data);
                     
-                    // Process all chunks for ultra-low latency
-                    if (event.data.size > 500) { // Minimum 500 bytes for speed
-                        // Process audio chunk immediately for real-time translation
+                    if (event.data.size > 500) {
                         const audioBlob = new Blob([event.data], { type: 'audio/webm' });
                         const reader = new FileReader();
                         reader.onload = () => {
@@ -543,7 +434,7 @@ const StreamingVoiceTranslationPanel: React.FC<StreamingVoiceTranslationPanelPro
                                 socketRef.current.emit('streaming_audio_chunk', {
                                     audioData: base64Audio,
                                     sessionId: sessionIdRef.current,
-                                    isFinal: false // Real-time processing
+                                    isFinal: false
                                 });
                             }
                         };
@@ -554,7 +445,7 @@ const StreamingVoiceTranslationPanel: React.FC<StreamingVoiceTranslationPanelPro
                 }
             };
 
-            mediaRecorder.start(200); // 200ms chunks for ultra-low latency
+            mediaRecorder.start(200);
             console.log('🎤 MediaRecorder started');
         } else {
             console.error('🎤 No audio stream available!');
@@ -572,7 +463,6 @@ const StreamingVoiceTranslationPanel: React.FC<StreamingVoiceTranslationPanelPro
             mediaRecorderRef.current.stop();
         }
         
-        // Process the recorded audio
         if (currentAudioChunksRef.current.length > 0 && socketRef.current && sessionIdRef.current) {
             console.log('🔇 Processing', currentAudioChunksRef.current.length, 'audio chunks');
             const audioBlob = new Blob(currentAudioChunksRef.current, { type: 'audio/webm' });
@@ -596,13 +486,11 @@ const StreamingVoiceTranslationPanel: React.FC<StreamingVoiceTranslationPanelPro
     };
 
     const stopListening = () => {
-        // Stop VAD monitoring
         if (animationIdRef.current) {
             cancelAnimationFrame(animationIdRef.current);
             animationIdRef.current = null;
         }
         
-        // Clear timers
         if (silenceTimerRef.current) {
             clearTimeout(silenceTimerRef.current);
             silenceTimerRef.current = null;
@@ -612,16 +500,13 @@ const StreamingVoiceTranslationPanel: React.FC<StreamingVoiceTranslationPanelPro
             deliveryTimerRef.current = null;
         }
         
-        // Stop any active recording and process final audio immediately
         if (isRecordingRef.current) {
             stopRecordingSpeech();
-            // Process the final audio immediately
             setTimeout(() => {
                 processFinalAudio();
-            }, 10); // Very short delay
+            }, 10);
         }
         
-        // Close audio context if it's not already closed
         if (audioContextRef.current && audioContextRef.current.state !== 'closed') {
             try {
                 audioContextRef.current.close();
@@ -635,18 +520,6 @@ const StreamingVoiceTranslationPanel: React.FC<StreamingVoiceTranslationPanelPro
         setIsSpeaking(false);
         setAudioLevel(0);
         setStatus('Stopped listening');
-    };
-
-    const updateAudioLevel = () => {
-        if (analyserRef.current && dataArrayRef.current) {
-            analyserRef.current.getByteFrequencyData(dataArrayRef.current);
-            
-            // Calculate average frequency data for visualization
-            const average = dataArrayRef.current.reduce((sum, value) => sum + value, 0) / dataArrayRef.current.length;
-            setAudioLevel(average / 255); // Normalize to 0-1
-
-            animationIdRef.current = requestAnimationFrame(updateAudioLevel);
-        }
     };
 
     const handleToggleListening = () => {
@@ -663,17 +536,18 @@ const StreamingVoiceTranslationPanel: React.FC<StreamingVoiceTranslationPanelPro
         const barCount = 20;
         
         return (
-            <div className="flex items-center justify-center space-x-1 h-15">
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px', height: '60px' }}>
                 {Array.from({ length: barCount }, (_, i) => {
                     const barHeight = Math.max(4, audioLevel * height * (0.5 + Math.random() * 0.5));
                     return (
                         <div
                             key={i}
-                            className="bg-blue-500 transition-all duration-100"
                             style={{
                                 width: barWidth,
                                 height: isListening ? barHeight : 4,
-                                borderRadius: '2px'
+                                backgroundColor: '#3b82f6',
+                                borderRadius: '2px',
+                                transition: 'all 0.1s'
                             }}
                         />
                     );
@@ -690,22 +564,23 @@ const StreamingVoiceTranslationPanel: React.FC<StreamingVoiceTranslationPanelPro
                 left: 0,
                 right: 0,
                 bottom: 0,
-                backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                backgroundColor: 'rgba(0, 0, 0, 0.85)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 zIndex: 99999,
-                padding: '20px'
+                padding: '20px',
+                backdropFilter: 'blur(4px)'
             }}
             onClick={onClose}
         >
             <div 
                 style={{
-                    backgroundColor: '#ffffff',
+                    backgroundColor: '#1a1a1a',
                     padding: '24px',
                     borderRadius: '12px',
-                    boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
-                    border: '1px solid #e5e7eb',
+                    boxShadow: '0 25px 50px rgba(0, 0, 0, 0.8)',
+                    border: '1px solid #333333',
                     maxWidth: '800px',
                     width: '100%',
                     maxHeight: '90vh',
@@ -715,14 +590,14 @@ const StreamingVoiceTranslationPanel: React.FC<StreamingVoiceTranslationPanelPro
                 onClick={(e) => e.stopPropagation()}
             >
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-                    <h3 style={{ fontSize: '18px', fontWeight: 'bold', color: '#1f2937', margin: 0 }}>
+                    <h3 style={{ fontSize: '20px', fontWeight: 'bold', color: '#ffffff', margin: 0 }}>
                         Real-time Interpreter: {targetLanguage.toUpperCase()} ↔ English
                     </h3>
                     <button
                         onClick={onClose}
                         style={{
-                            color: '#6b7280',
-                            fontSize: '20px',
+                            color: '#999999',
+                            fontSize: '24px',
                             fontWeight: 'bold',
                             width: '32px',
                             height: '32px',
@@ -734,7 +609,7 @@ const StreamingVoiceTranslationPanel: React.FC<StreamingVoiceTranslationPanelPro
                             backgroundColor: 'transparent',
                             cursor: 'pointer'
                         }}
-                        onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#f3f4f6'}
+                        onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#333333'}
                         onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
                     >
                         ×
@@ -745,21 +620,21 @@ const StreamingVoiceTranslationPanel: React.FC<StreamingVoiceTranslationPanelPro
                 <div style={{ 
                     marginBottom: '16px', 
                     padding: '12px', 
-                    backgroundColor: '#f9fafb', 
+                    backgroundColor: '#0a0a0a', 
                     borderRadius: '8px',
-                    border: '1px solid #e5e7eb'
+                    border: '1px solid #333333'
                 }}>
-                    <div style={{ fontSize: '14px', fontWeight: '500', color: '#1f2937', marginBottom: '4px' }}>
+                    <div style={{ fontSize: '14px', fontWeight: '500', color: '#ffffff', marginBottom: '4px' }}>
                         Current Turn: {currentTurn === 'customer' ? `Customer (${targetLanguage})` : 'Staff (English)'}
                     </div>
-                <div style={{ fontSize: '12px', color: '#6b7280' }}>
-                    {status}
-                </div>
-                {isSpeaking && (
-                    <div style={{ fontSize: '12px', color: '#059669', fontWeight: '500', marginTop: '4px' }}>
-                        🎤 Speaking detected...
+                    <div style={{ fontSize: '12px', color: '#999999' }}>
+                        {status}
                     </div>
-                )}
+                    {isSpeaking && (
+                        <div style={{ fontSize: '12px', color: '#10b981', fontWeight: '500', marginTop: '4px' }}>
+                            🎤 Speaking detected...
+                        </div>
+                    )}
                 </div>
 
                 {/* Real-time Translation Display */}
@@ -767,25 +642,25 @@ const StreamingVoiceTranslationPanel: React.FC<StreamingVoiceTranslationPanelPro
                     <div style={{ 
                         marginBottom: '16px', 
                         padding: '16px', 
-                        backgroundColor: '#f0f9ff', 
+                        backgroundColor: 'rgba(59, 130, 246, 0.1)', 
                         borderRadius: '8px',
-                        border: '1px solid #0ea5e9',
+                        border: '1px solid rgba(59, 130, 246, 0.3)',
                         position: 'relative'
                     }}>
-                        <div style={{ fontSize: '14px', fontWeight: '500', color: '#0c4a6e', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <div style={{ fontSize: '14px', fontWeight: '500', color: '#3b82f6', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '8px' }}>
                             <div style={{
                                 width: '8px',
                                 height: '8px',
-                                backgroundColor: '#0ea5e9',
+                                backgroundColor: '#3b82f6',
                                 borderRadius: '50%',
                                 animation: 'pulse 1.5s ease-in-out infinite'
                             }}></div>
                             Live Translation:
                         </div>
-                        <div style={{ fontSize: '14px', color: '#1e293b', marginBottom: '4px' }}>
+                        <div style={{ fontSize: '14px', color: '#ffffff', marginBottom: '4px' }}>
                             <strong>Original:</strong> {currentPartialText}
                         </div>
-                        <div style={{ fontSize: '14px', color: '#1e293b' }}>
+                        <div style={{ fontSize: '14px', color: '#ffffff' }}>
                             <strong>Translated:</strong> {currentTranslatedText}
                         </div>
                         <style>{`
@@ -801,9 +676,9 @@ const StreamingVoiceTranslationPanel: React.FC<StreamingVoiceTranslationPanelPro
                 <div style={{ 
                     marginBottom: '16px', 
                     padding: '16px', 
-                    backgroundColor: '#f9fafb', 
+                    backgroundColor: '#0a0a0a', 
                     borderRadius: '8px',
-                    border: '1px solid #e5e7eb'
+                    border: '1px solid #333333'
                 }}>
                     <WaveformVisualizer />
                 </div>
@@ -814,25 +689,25 @@ const StreamingVoiceTranslationPanel: React.FC<StreamingVoiceTranslationPanelPro
                         onClick={handleToggleListening}
                         disabled={isProcessing}
                         style={{
-                            padding: '12px 24px',
+                            padding: '15px 30px',
                             borderRadius: '8px',
                             fontWeight: '500',
+                            fontSize: '16px',
                             border: 'none',
                             cursor: isProcessing ? 'not-allowed' : 'pointer',
                             opacity: isProcessing ? 0.5 : 1,
-                            backgroundColor: isListening ? '#dc2626' : '#2563eb',
+                            backgroundColor: isListening ? '#dc2626' : '#1e40af',
                             color: '#ffffff',
-                            fontSize: '14px',
                             transition: 'all 0.2s'
                         }}
                         onMouseOver={(e) => {
                             if (!isProcessing) {
-                                e.currentTarget.style.backgroundColor = isListening ? '#b91c1c' : '#1d4ed8';
+                                e.currentTarget.style.backgroundColor = isListening ? '#b91c1c' : '#3b82f6';
                             }
                         }}
                         onMouseOut={(e) => {
                             if (!isProcessing) {
-                                e.currentTarget.style.backgroundColor = isListening ? '#dc2626' : '#2563eb';
+                                e.currentTarget.style.backgroundColor = isListening ? '#dc2626' : '#1e40af';
                             }
                         }}
                     >
@@ -842,36 +717,39 @@ const StreamingVoiceTranslationPanel: React.FC<StreamingVoiceTranslationPanelPro
 
                 {/* Conversation History */}
                 {conversationHistory.length > 0 && (
-                    <div style={{ borderTop: '1px solid #e5e7eb', paddingTop: '16px' }}>
-                        <h4 style={{ fontWeight: '500', marginBottom: '12px', color: '#1f2937', fontSize: '16px' }}>Conversation History</h4>
+                    <div style={{ borderTop: '1px solid #333333', paddingTop: '16px' }}>
+                        <h4 style={{ fontWeight: '500', marginBottom: '12px', color: '#ffffff', fontSize: '16px' }}>
+                            Conversation History
+                        </h4>
                         <div style={{ maxHeight: '240px', overflowY: 'auto' }}>
                             {conversationHistory.map((entry, index) => (
                                 <div key={index} style={{ 
-                                    border: '1px solid #e5e7eb', 
+                                    border: '1px solid #333333', 
                                     borderRadius: '8px', 
                                     padding: '12px', 
                                     marginBottom: '12px',
-                                    backgroundColor: '#ffffff'
+                                    backgroundColor: entry.turn === 'customer' ? '#004d00' : '#001f3f',
+                                    borderLeft: entry.turn === 'customer' ? '4px solid #00cc00' : '4px solid #0066cc'
                                 }}>
                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
                                         <span style={{
                                             fontSize: '12px',
                                             padding: '4px 8px',
                                             borderRadius: '4px',
-                                            backgroundColor: entry.turn === 'customer' ? '#dbeafe' : '#dcfce7',
-                                            color: entry.turn === 'customer' ? '#1e40af' : '#166534',
+                                            backgroundColor: entry.turn === 'customer' ? '#00cc00' : '#0066cc',
+                                            color: '#ffffff',
                                             fontWeight: '500'
                                         }}>
                                             {entry.turn === 'customer' ? `Customer (${targetLanguage})` : 'Staff (English)'}
                                         </span>
-                                        <span style={{ fontSize: '12px', color: '#6b7280' }}>
+                                        <span style={{ fontSize: '12px', color: '#999999' }}>
                                             {entry.timestamp.toLocaleTimeString()}
                                         </span>
                                     </div>
-                                    <div style={{ fontSize: '14px', marginBottom: '4px', color: '#1f2937' }}>
+                                    <div style={{ fontSize: '14px', marginBottom: '4px', color: '#ffffff' }}>
                                         <strong>Original:</strong> {entry.originalText}
                                     </div>
-                                    <div style={{ fontSize: '14px', color: '#374151', marginBottom: '8px' }}>
+                                    <div style={{ fontSize: '14px', color: '#cccccc', marginBottom: '8px' }}>
                                         <strong>Translation:</strong> {entry.translatedText}
                                     </div>
                                     {entry.isPartial && (

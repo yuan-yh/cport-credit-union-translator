@@ -25,49 +25,67 @@ const GreeterDashboard: React.FC = () => {
             mood: customer.mood || 'calm',
             status: 'waiting'
         };
-
         dispatch({ type: 'ADD_CUSTOMER', payload: newCustomer });
         setCustomerData({});
         setShowTranslation(false);
     };
 
     return (
-        <div className="min-h-screen bg-gray-50">
+        <div style={{ 
+            minHeight: '100vh', 
+            backgroundColor: '#000000',
+            display: 'flex',
+            flexDirection: 'column'
+        }}>
             <Header />
 
-            <div className="p-6">
-                <div className="max-w-6xl mx-auto">
-                    <div className="mb-6">
-                        <h2 className="text-2xl font-bold text-gray-800 mb-2">Welcome Center - Real-time Interpreter</h2>
-                        <p className="text-gray-600">Help customers get started with instant voice translation and route them to the right service</p>
+            <div style={{ 
+                flex: 1,
+                display: 'flex',
+                justifyContent: 'center',
+                alignItems: 'flex-start',
+                padding: '24px',
+                backgroundColor: '#000000'
+            }}>
+                <div style={{ 
+                    maxWidth: '1400px', 
+                    width: '100%'
+                }}>
+                    <div style={{ marginBottom: '24px', textAlign: 'center' }}>
+                        <h2 style={{
+                            fontSize: '28px',
+                            fontWeight: 'bold',
+                            color: '#ffffff',
+                            marginBottom: '8px'
+                        }}>
+                            Welcome Center - Real-time Interpreter
+                        </h2>
+                        <p style={{ color: '#999999', fontSize: '16px', margin: 0 }}>
+                            Help customers get started with instant voice translation and route them to the right service
+                        </p>
                     </div>
 
-                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                        {/* Language Selection */}
-                        <div className="lg:col-span-1">
-                            <LanguageSelector
-                                selectedLanguage={currentLanguage}
-                                onLanguageChange={setCurrentLanguage}
-                                onStartTranslation={() => setShowTranslation(true)}
-                            />
-                        </div>
+                    <div style={{
+                        display: 'grid',
+                        gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))',
+                        gap: '24px',
+                        justifyContent: 'center'
+                    }}>
+                        <LanguageSelector
+                            selectedLanguage={currentLanguage}
+                            onLanguageChange={setCurrentLanguage}
+                            onStartTranslation={() => setShowTranslation(true)}
+                        />
 
-                        {/* Customer Information */}
-                        <div className="lg:col-span-1">
-                            <CustomerForm
-                                customerData={customerData}
-                                onCustomerDataChange={setCustomerData}
-                                onSubmit={handleCustomerSubmit}
-                            />
-                        </div>
+                        <CustomerForm
+                            customerData={customerData}
+                            onCustomerDataChange={setCustomerData}
+                            onSubmit={handleCustomerSubmit}
+                        />
 
-                        {/* Queue Status */}
-                        <div className="lg:col-span-1">
-                            <QueueAssignment customers={state.customers} />
-                        </div>
+                        <QueueAssignment customers={state.customers} />
                     </div>
 
-                    {/* Real-time Interpreter Modal */}
                     {showTranslation && (
                         <StreamingVoiceTranslationPanel
                             targetLanguage={currentLanguage}

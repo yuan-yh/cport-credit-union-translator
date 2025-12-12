@@ -43,140 +43,374 @@ const TellerDashboard: React.FC = () => {
     const activeCustomer = state.customers.find(c => c.id === currentCustomer);
 
     return (
-        <div className="min-h-screen bg-gray-50">
+        <div style={{ 
+            minHeight: '100vh', 
+            backgroundColor: '#000000',
+            display: 'flex',
+            flexDirection: 'column'
+        }}>
             <Header />
 
-            <div className="p-6">
-                <div className="max-w-7xl mx-auto">
-                    <div className="mb-6">
-                        <h2 className="text-2xl font-bold text-gray-800 mb-2">Teller Window</h2>
-                        <p className="text-gray-600">Serve customers with simple transactions</p>
+            <div style={{ 
+                flex: 1,
+                display: 'flex',
+                justifyContent: 'center',
+                alignItems: 'flex-start',
+                padding: '24px',
+                backgroundColor: '#000000'
+            }}>
+                <div style={{ 
+                    maxWidth: '1400px', 
+                    width: '100%'
+                }}>
+                    <div style={{ marginBottom: '24px', textAlign: 'center' }}>
+                        <h2 style={{
+                            fontSize: '28px',
+                            fontWeight: 'bold',
+                            color: '#ffffff',
+                            marginBottom: '8px'
+                        }}>
+                            Teller Window
+                        </h2>
+                        <p style={{ color: '#999999', fontSize: '16px', margin: 0 }}>
+                            Serve customers with simple transactions
+                        </p>
                     </div>
 
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div style={{
+                        display: 'grid',
+                        gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))',
+                        gap: '24px',
+                        justifyContent: 'center'
+                    }}>
                         {/* Queue Management */}
-                        <div className="bg-white p-6 rounded-lg shadow-md">
-                            <h3 className="text-lg font-semibold mb-4 text-gray-800">
+                        <div style={{
+                            backgroundColor: '#1a1a1a',
+                            padding: '24px',
+                            borderRadius: '12px',
+                            boxShadow: '0 5px 15px rgba(0, 0, 0, 0.4)',
+                            border: '1px solid #333333'
+                        }}>
+                            <h3 style={{
+                                fontSize: '20px',
+                                fontWeight: '600',
+                                marginBottom: '16px',
+                                color: '#ffffff'
+                            }}>
                                 Customer Queue ({simpleQueueCustomers.length} waiting)
                             </h3>
 
                             {!currentCustomer ? (
                                 <div>
                                     {simpleQueueCustomers.length > 0 ? (
-                                        <div className="space-y-3">
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                                             {simpleQueueCustomers.slice(0, 3).map((customer, index) => (
-                                                <div key={customer.id} className={`p-3 rounded border ${index === 0 ? 'border-cport-blue bg-blue-50' : 'border-gray-200'
-                                                    }`}>
-                                                    <div className="flex justify-between items-center">
+                                                <div key={customer.id} style={{
+                                                    padding: '16px',
+                                                    borderRadius: '8px',
+                                                    border: index === 0 ? '2px solid #3b82f6' : '1px solid #333333',
+                                                    backgroundColor: index === 0 ? '#001f3f' : '#0a0a0a'
+                                                }}>
+                                                    <div style={{
+                                                        display: 'flex',
+                                                        justifyContent: 'space-between',
+                                                        alignItems: 'center'
+                                                    }}>
                                                         <div>
-                                                            <p className="font-medium">{customer.name || 'Customer'}</p>
-                                                            <p className="text-sm text-gray-600">
+                                                            <p style={{
+                                                                fontWeight: '500',
+                                                                color: '#ffffff',
+                                                                margin: '0 0 4px 0'
+                                                            }}>
+                                                                {customer.name || 'Customer'}
+                                                            </p>
+                                                            <p style={{
+                                                                fontSize: '14px',
+                                                                color: '#999999',
+                                                                margin: '0 0 2px 0'
+                                                            }}>
                                                                 Language: {customer.language.toUpperCase()}
                                                             </p>
-                                                            <p className="text-sm text-gray-600">
+                                                            <p style={{
+                                                                fontSize: '14px',
+                                                                color: '#999999',
+                                                                margin: 0
+                                                            }}>
                                                                 Wait: {customer.estimatedWaitTime} min
                                                             </p>
                                                         </div>
                                                         {index === 0 && (
-                                                            <span className="text-xs bg-cport-blue text-white px-2 py-1 rounded">
+                                                            <span style={{
+                                                                fontSize: '12px',
+                                                                backgroundColor: '#3b82f6',
+                                                                color: 'white',
+                                                                padding: '4px 12px',
+                                                                borderRadius: '12px',
+                                                                fontWeight: '500'
+                                                            }}>
                                                                 NEXT
                                                             </span>
                                                         )}
                                                     </div>
                                                     {customer.notes && (
-                                                        <p className="text-sm text-gray-600 mt-2 italic">{customer.notes}</p>
+                                                        <p style={{
+                                                            fontSize: '14px',
+                                                            color: '#cccccc',
+                                                            marginTop: '8px',
+                                                            fontStyle: 'italic'
+                                                        }}>
+                                                            {customer.notes}
+                                                        </p>
                                                     )}
                                                 </div>
                                             ))}
 
                                             <button
                                                 onClick={handleServeNext}
-                                                className="w-full bg-cport-blue text-white py-3 rounded-md hover:bg-cport-light transition-colors font-medium"
+                                                style={{
+                                                    width: '100%',
+                                                    backgroundColor: '#1e40af',
+                                                    color: 'white',
+                                                    padding: '15px',
+                                                    borderRadius: '8px',
+                                                    border: 'none',
+                                                    fontSize: '16px',
+                                                    fontWeight: '500',
+                                                    cursor: 'pointer',
+                                                    marginTop: '8px',
+                                                    transition: 'all 0.2s ease'
+                                                }}
+                                                onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#3b82f6'}
+                                                onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#1e40af'}
                                             >
                                                 Serve Next Customer
                                             </button>
                                         </div>
                                     ) : (
-                                        <div className="text-center py-8">
-                                            <p className="text-gray-500 mb-4">No customers in queue</p>
-                                            <div className="text-6xl mb-4">💤</div>
-                                            <p className="text-sm text-gray-400">Waiting for customers...</p>
+                                        <div style={{ textAlign: 'center', padding: '32px 0' }}>
+                                            <p style={{ color: '#999999', marginBottom: '16px' }}>
+                                                No customers in queue
+                                            </p>
+                                            <div style={{ fontSize: '48px', marginBottom: '16px' }}>💤</div>
+                                            <p style={{ fontSize: '14px', color: '#666666' }}>
+                                                Waiting for customers...
+                                            </p>
                                         </div>
                                     )}
                                 </div>
                             ) : (
-                                <div className="space-y-4">
-                                    <div className="bg-cport-blue text-white p-4 rounded-md">
-                                        <h4 className="font-semibold">Now Serving</h4>
-                                        <p className="text-blue-100">{activeCustomer?.name || 'Customer'}</p>
-                                        <p className="text-blue-200 text-sm">
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                                    <div style={{
+                                        backgroundColor: '#001f3f',
+                                        color: 'white',
+                                        padding: '20px',
+                                        borderRadius: '8px',
+                                        border: '1px solid #0066cc'
+                                    }}>
+                                        <h4 style={{ fontWeight: '600', margin: '0 0 4px 0' }}>
+                                            Now Serving
+                                        </h4>
+                                        <p style={{ color: '#66b3ff', margin: '0 0 2px 0' }}>
+                                            {activeCustomer?.name || 'Customer'}
+                                        </p>
+                                        <p style={{ color: '#99ccff', fontSize: '14px', margin: 0 }}>
                                             Language: {activeCustomer?.language.toUpperCase()}
                                         </p>
                                     </div>
 
                                     {activeCustomer?.notes && (
-                                        <div className="bg-yellow-50 border border-yellow-200 p-3 rounded-md">
-                                            <p className="text-sm text-yellow-800">
+                                        <div style={{
+                                            backgroundColor: 'rgba(217, 119, 6, 0.1)',
+                                            border: '1px solid rgba(217, 119, 6, 0.3)',
+                                            padding: '12px',
+                                            borderRadius: '8px'
+                                        }}>
+                                            <p style={{ fontSize: '14px', color: '#fbbf24', margin: 0 }}>
                                                 <strong>Notes:</strong> {activeCustomer.notes}
                                             </p>
                                         </div>
                                     )}
 
-                                    <div className="space-y-2">
-                                        <button
-                                            onClick={() => setShowTranslation(!showTranslation)}
-                                            className="w-full bg-cport-green text-white py-2 rounded-md hover:bg-green-600 transition-colors"
-                                        >
-                                            {showTranslation ? 'Hide Translation' : 'Start Translation'}
-                                        </button>
+                                    <button
+                                        onClick={() => setShowTranslation(!showTranslation)}
+                                        style={{
+                                            width: '100%',
+                                            backgroundColor: '#059669',
+                                            color: 'white',
+                                            padding: '12px',
+                                            borderRadius: '8px',
+                                            border: 'none',
+                                            fontSize: '14px',
+                                            fontWeight: '500',
+                                            cursor: 'pointer',
+                                            transition: 'all 0.2s ease'
+                                        }}
+                                        onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#047857'}
+                                        onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#059669'}
+                                    >
+                                        {showTranslation ? 'Hide Translation' : 'Start Translation'}
+                                    </button>
 
-                                        <button
-                                            onClick={handleCompleteService}
-                                            className="w-full bg-gray-600 text-white py-2 rounded-md hover:bg-gray-700 transition-colors"
-                                        >
-                                            Complete Service
-                                        </button>
-                                    </div>
+                                    <button
+                                        onClick={handleCompleteService}
+                                        style={{
+                                            width: '100%',
+                                            backgroundColor: '#555555',
+                                            color: 'white',
+                                            padding: '12px',
+                                            borderRadius: '8px',
+                                            border: 'none',
+                                            fontSize: '14px',
+                                            fontWeight: '500',
+                                            cursor: 'pointer',
+                                            transition: 'all 0.2s ease'
+                                        }}
+                                        onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#666666'}
+                                        onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#555555'}
+                                    >
+                                        Complete Service
+                                    </button>
                                 </div>
                             )}
                         </div>
 
-                        {/* Banking Work Area Simulation */}
-                        <div className="bg-white p-6 rounded-lg shadow-md">
-                            <h3 className="text-lg font-semibold mb-4 text-gray-800">Banking System</h3>
+                        {/* Banking Work Area */}
+                        <div style={{
+                            backgroundColor: '#1a1a1a',
+                            padding: '24px',
+                            borderRadius: '12px',
+                            boxShadow: '0 5px 15px rgba(0, 0, 0, 0.4)',
+                            border: '1px solid #333333'
+                        }}>
+                            <h3 style={{
+                                fontSize: '20px',
+                                fontWeight: '600',
+                                marginBottom: '16px',
+                                color: '#ffffff'
+                            }}>
+                                Banking System
+                            </h3>
 
-                            <div className="bg-gray-100 p-4 rounded-md mb-4">
-                                <p className="text-sm text-gray-600 mb-2">Simulated Banking Interface</p>
-                                <div className="grid grid-cols-2 gap-2 text-xs">
-                                    <div className="bg-white p-2 rounded">Account: ****1234</div>
-                                    <div className="bg-white p-2 rounded">Balance: $1,247.56</div>
-                                    <div className="bg-white p-2 rounded">Type: Checking</div>
-                                    <div className="bg-white p-2 rounded">Status: Active</div>
+                            <div style={{
+                                backgroundColor: '#0a0a0a',
+                                padding: '16px',
+                                borderRadius: '8px',
+                                marginBottom: '16px',
+                                border: '1px solid #333333'
+                            }}>
+                                <p style={{ fontSize: '14px', color: '#999999', marginBottom: '12px' }}>
+                                    Simulated Banking Interface
+                                </p>
+                                <div style={{
+                                    display: 'grid',
+                                    gridTemplateColumns: 'repeat(2, 1fr)',
+                                    gap: '8px',
+                                    fontSize: '12px'
+                                }}>
+                                    <div style={{
+                                        backgroundColor: '#1a1a1a',
+                                        padding: '8px',
+                                        borderRadius: '4px',
+                                        color: '#cccccc'
+                                    }}>
+                                        Account: ****1234
+                                    </div>
+                                    <div style={{
+                                        backgroundColor: '#1a1a1a',
+                                        padding: '8px',
+                                        borderRadius: '4px',
+                                        color: '#cccccc'
+                                    }}>
+                                        Balance: $1,247.56
+                                    </div>
+                                    <div style={{
+                                        backgroundColor: '#1a1a1a',
+                                        padding: '8px',
+                                        borderRadius: '4px',
+                                        color: '#cccccc'
+                                    }}>
+                                        Type: Checking
+                                    </div>
+                                    <div style={{
+                                        backgroundColor: '#1a1a1a',
+                                        padding: '8px',
+                                        borderRadius: '4px',
+                                        color: '#cccccc'
+                                    }}>
+                                        Status: Active
+                                    </div>
                                 </div>
                             </div>
 
-                            <div className="space-y-2">
-                                <button className="w-full bg-green-500 text-white py-2 rounded text-sm hover:bg-green-600">
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                <button style={{
+                                    width: '100%',
+                                    backgroundColor: '#059669',
+                                    color: 'white',
+                                    padding: '12px',
+                                    borderRadius: '6px',
+                                    border: 'none',
+                                    fontSize: '14px',
+                                    cursor: 'pointer',
+                                    transition: 'background-color 0.2s'
+                                }}>
                                     Process Deposit
                                 </button>
-                                <button className="w-full bg-blue-500 text-white py-2 rounded text-sm hover:bg-blue-600">
+                                <button style={{
+                                    width: '100%',
+                                    backgroundColor: '#3b82f6',
+                                    color: 'white',
+                                    padding: '12px',
+                                    borderRadius: '6px',
+                                    border: 'none',
+                                    fontSize: '14px',
+                                    cursor: 'pointer'
+                                }}>
                                     Process Withdrawal
                                 </button>
-                                <button className="w-full bg-purple-500 text-white py-2 rounded text-sm hover:bg-purple-600">
+                                <button style={{
+                                    width: '100%',
+                                    backgroundColor: '#8b5cf6',
+                                    color: 'white',
+                                    padding: '12px',
+                                    borderRadius: '6px',
+                                    border: 'none',
+                                    fontSize: '14px',
+                                    cursor: 'pointer'
+                                }}>
                                     Account Inquiry
                                 </button>
-                                <button className="w-full bg-orange-500 text-white py-2 rounded text-sm hover:bg-orange-600">
+                                <button style={{
+                                    width: '100%',
+                                    backgroundColor: '#f59e0b',
+                                    color: 'white',
+                                    padding: '12px',
+                                    borderRadius: '6px',
+                                    border: 'none',
+                                    fontSize: '14px',
+                                    cursor: 'pointer'
+                                }}>
                                     Print Statement
                                 </button>
                             </div>
                         </div>
                     </div>
 
-                    {/* Real-time Translation Modal */}
+                    {/* Translation Modal */}
                     {showTranslation && activeCustomer && (
                         <StreamingVoiceTranslationPanel
                             targetLanguage={activeCustomer.language}
                             onClose={() => setShowTranslation(false)}
+                            onCustomerDataUpdate={(data) => {
+                                dispatch({
+                                    type: 'UPDATE_CUSTOMER',
+                                    payload: {
+                                        id: activeCustomer.id,
+                                        updates: data
+                                    }
+                                });
+                            }}
+                            currentCustomerData={activeCustomer}
                         />
                     )}
                 </div>

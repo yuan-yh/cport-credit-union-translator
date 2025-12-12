@@ -11,24 +11,51 @@ const Header: React.FC = () => {
     };
 
     return (
-        <header className="bg-cport-blue text-white p-4 shadow-md">
-            <div className="flex justify-between items-center">
+        <header style={{
+            backgroundColor: '#1a1a1a',
+            color: 'white',
+            padding: '16px 24px',
+            boxShadow: '0 2px 8px rgba(0, 0, 0, 0.5)',
+            borderBottom: '1px solid #333333'
+        }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div>
-                    <h1 className="text-xl font-bold">cPort Real-time Interpreter</h1>
-                    <p className="text-blue-200 text-sm">
+                    <h1 style={{
+                        fontSize: '24px',
+                        fontWeight: 'bold',
+                        color: '#3b82f6',
+                        margin: '0 0 4px 0'
+                    }}>
+                        cPort Real-time Interpreter
+                    </h1>
+                    <p style={{
+                        color: '#999999',
+                        fontSize: '14px',
+                        margin: 0
+                    }}>
                         {state.currentUser?.name} - {state.currentUser?.role?.toUpperCase()}
                     </p>
                 </div>
-
-                <div className="flex items-center space-x-4">
-                    <div className="flex items-center space-x-2">
-                        <div className="w-3 h-3 bg-cport-green rounded-full"></div>
-                        <span className="text-sm">System Online</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                    <div className="connection-badge connected">
+                        <div className="connection-badge-dot"></div>
+                        <span>System Online</span>
                     </div>
-
                     <button
                         onClick={handleLogout}
-                        className="bg-cport-light px-4 py-2 rounded hover:bg-blue-600 transition-colors text-sm"
+                        style={{
+                            backgroundColor: '#3b82f6',
+                            padding: '10px 20px',
+                            borderRadius: '6px',
+                            border: 'none',
+                            color: 'white',
+                            fontSize: '14px',
+                            fontWeight: '500',
+                            cursor: 'pointer',
+                            transition: 'all 0.2s ease'
+                        }}
+                        onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#2563eb'}
+                        onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#3b82f6'}
                     >
                         Sign Out
                     </button>

@@ -1,4 +1,4 @@
-/* CPort Credit Union Enterprise Design System */
+/* CPort Credit Union Enterprise Design System - Modern Dark Theme */
 
 :root {
   /* Primary Brand Colors */
@@ -7,6 +7,13 @@
   --cport-green: #059669;
   --cport-red: #dc2626;
   --cport-yellow: #d97706;
+  
+  /* Dark Theme Colors */
+  --cport-dark-bg: #000000;
+  --cport-dark-panel: #111111;
+  --cport-dark-card: #1a1a1a;
+  --cport-dark-border: #333333;
+  --cport-dark-hover: #2a2a2a;
   
   /* Neutral Colors */
   --cport-gray-50: #f9fafb;
@@ -52,8 +59,8 @@
 
 body {
   font-family: var(--font-family-primary);
-  background-color: var(--cport-gray-50);
-  color: var(--cport-gray-800);
+  background-color: var(--cport-dark-bg);
+  color: #ffffff;
   line-height: 1.6;
   margin: 0;
   padding: 0;
@@ -76,87 +83,104 @@ body {
 .border-cport-light { border-color: var(--cport-light); }
 .border-cport-green { border-color: var(--cport-green); }
 
-/* Button Styles */
+/* Button Styles - Modern Dark Theme */
 .btn-primary {
   background-color: var(--cport-blue);
   color: white;
   border: none;
-  padding: var(--spacing-sm) var(--spacing-lg);
+  padding: 15px 30px;
   border-radius: var(--radius-md);
   font-weight: 500;
+  font-size: 16px;
   cursor: pointer;
   transition: all 0.2s ease;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
 }
 
 .btn-primary:hover {
   background-color: var(--cport-light);
   transform: translateY(-1px);
-  box-shadow: var(--shadow-md);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.6);
+}
+
+.btn-primary:active {
+  transform: translateY(1px);
+  box-shadow: none;
 }
 
 .btn-secondary {
-  background-color: var(--cport-gray-200);
-  color: var(--cport-gray-800);
-  border: 1px solid var(--cport-gray-300);
-  padding: var(--spacing-sm) var(--spacing-lg);
+  background-color: #555555;
+  color: #ffffff;
+  border: 1px solid #444444;
+  padding: 15px 30px;
   border-radius: var(--radius-md);
   font-weight: 500;
+  font-size: 16px;
   cursor: pointer;
   transition: all 0.2s ease;
 }
 
 .btn-secondary:hover {
-  background-color: var(--cport-gray-300);
-  border-color: var(--cport-gray-400);
+  background-color: #666666;
+  border-color: #555555;
 }
 
 .btn-success {
   background-color: var(--cport-green);
   color: white;
   border: none;
-  padding: var(--spacing-sm) var(--spacing-lg);
+  padding: 15px 30px;
   border-radius: var(--radius-md);
   font-weight: 500;
+  font-size: 16px;
   cursor: pointer;
   transition: all 0.2s ease;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
 }
 
 .btn-success:hover {
   background-color: #047857;
   transform: translateY(-1px);
-  box-shadow: var(--shadow-md);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.6);
 }
 
 .btn-danger {
   background-color: var(--cport-red);
   color: white;
   border: none;
-  padding: var(--spacing-sm) var(--spacing-lg);
+  padding: 15px 30px;
   border-radius: var(--radius-md);
   font-weight: 500;
+  font-size: 16px;
   cursor: pointer;
   transition: all 0.2s ease;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
 }
 
 .btn-danger:hover {
   background-color: #b91c1c;
   transform: translateY(-1px);
-  box-shadow: var(--shadow-md);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.6);
 }
 
-/* Card Styles */
+.btn-danger:active {
+  transform: translateY(1px);
+  box-shadow: none;
+}
+
+/* Card Styles - Dark Theme */
 .card {
-  background: white;
+  background: var(--cport-dark-card);
   border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-sm);
-  border: 1px solid var(--cport-gray-200);
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.4);
+  border: 1px solid var(--cport-dark-border);
   overflow: hidden;
 }
 
 .card-header {
   padding: var(--spacing-lg);
-  border-bottom: 1px solid var(--cport-gray-200);
-  background-color: var(--cport-gray-50);
+  border-bottom: 1px solid var(--cport-dark-border);
+  background-color: var(--cport-dark-panel);
 }
 
 .card-body {
@@ -165,11 +189,11 @@ body {
 
 .card-footer {
   padding: var(--spacing-lg);
-  border-top: 1px solid var(--cport-gray-200);
-  background-color: var(--cport-gray-50);
+  border-top: 1px solid var(--cport-dark-border);
+  background-color: var(--cport-dark-panel);
 }
 
-/* Form Styles */
+/* Form Styles - Dark Theme */
 .form-group {
   margin-bottom: var(--spacing-lg);
 }
@@ -178,32 +202,41 @@ body {
   display: block;
   margin-bottom: var(--spacing-xs);
   font-weight: 500;
-  color: var(--cport-gray-700);
+  color: #cccccc;
+  font-size: 14px;
 }
 
 .form-input {
   width: 100%;
-  padding: var(--spacing-sm) var(--spacing-md);
-  border: 1px solid var(--cport-gray-300);
+  padding: 10px 15px;
+  border: 1px solid #666666;
   border-radius: var(--radius-md);
-  font-size: 1rem;
+  font-size: 15px;
   transition: border-color 0.2s ease;
+  background-color: #333333;
+  color: #ffffff;
 }
 
 .form-input:focus {
   outline: none;
   border-color: var(--cport-blue);
-  box-shadow: 0 0 0 3px rgb(30 64 175 / 0.1);
+  box-shadow: 0 0 0 3px rgb(30 64 175 / 0.2);
 }
 
 .form-select {
   width: 100%;
-  padding: var(--spacing-sm) var(--spacing-md);
-  border: 1px solid var(--cport-gray-300);
+  padding: 10px 15px;
+  border: 1px solid #666666;
   border-radius: var(--radius-md);
-  font-size: 1rem;
-  background-color: white;
+  font-size: 15px;
+  background-color: #333333;
+  color: #ffffff;
   cursor: pointer;
+}
+
+.form-select:focus {
+  outline: none;
+  border-color: var(--cport-blue);
 }
 
 /* Status Indicators */
@@ -234,6 +267,36 @@ body {
   font-weight: 500;
 }
 
+/* Connection Status Badge */
+.connection-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 12px;
+  border-radius: 12px;
+  font-size: 14px;
+  font-weight: 500;
+  gap: 8px;
+}
+
+.connection-badge.connected {
+  background-color: rgba(5, 150, 105, 0.2);
+  color: #10b981;
+  border: 1px solid rgba(5, 150, 105, 0.3);
+}
+
+.connection-badge.disconnected {
+  background-color: rgba(220, 38, 38, 0.2);
+  color: #ef4444;
+  border: 1px solid rgba(220, 38, 38, 0.3);
+}
+
+.connection-badge-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: currentColor;
+}
+
 /* Translation Panel Styles */
 .translation-panel {
   position: fixed;
@@ -241,21 +304,23 @@ body {
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
+  background: rgba(0, 0, 0, 0.85);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 1000;
+  backdrop-filter: blur(4px);
 }
 
 .translation-panel-content {
-  background: white;
+  background: var(--cport-dark-card);
   border-radius: var(--radius-xl);
-  box-shadow: var(--shadow-xl);
+  box-shadow: 0 25px 50px rgba(0, 0, 0, 0.8);
   max-width: 90vw;
   max-height: 90vh;
   width: 800px;
   overflow: hidden;
+  border: 1px solid var(--cport-dark-border);
 }
 
 /* Voice Activity Indicator */
@@ -264,7 +329,7 @@ body {
   width: 12px;
   height: 12px;
   border-radius: 50%;
-  background-color: var(--cport-gray-400);
+  background-color: #666666;
   margin-right: var(--spacing-sm);
 }
 
@@ -283,36 +348,30 @@ body {
   animation: pulse 0.8s ease-in-out infinite;
 }
 
-/* Real-time Interpreter Toggle */
-.interpreter-toggle {
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-  padding: var(--spacing-sm) var(--spacing-lg);
-  background-color: var(--cport-gray-100);
-  border: 1px solid var(--cport-gray-300);
-  border-radius: var(--radius-lg);
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.interpreter-toggle:hover {
-  background-color: var(--cport-gray-200);
-}
-
-.interpreter-toggle.active {
-  background-color: var(--cport-green);
+/* Conversation History Panel */
+.conversation-panel {
+  background-color: var(--cport-dark-panel);
+  border-left: 1px solid var(--cport-dark-border);
   color: white;
-  border-color: var(--cport-green);
 }
 
-.interpreter-toggle.active:hover {
-  background-color: #047857;
+.conversation-message {
+  margin-bottom: 16px;
+  padding: 12px;
+  border-radius: 8px;
+  border: 1px solid;
 }
 
-.interpreter-toggle-icon {
-  margin-right: var(--spacing-sm);
-  font-size: 1.2rem;
+.conversation-message.customer {
+  background-color: #004d00;
+  border-color: #00cc00;
+  margin-right: 16px;
+}
+
+.conversation-message.staff {
+  background-color: #001f3f;
+  border-color: #0066cc;
+  margin-left: 16px;
 }
 
 /* Responsive Design */
@@ -331,8 +390,8 @@ body {
   .btn-secondary,
   .btn-success,
   .btn-danger {
-    padding: var(--spacing-md) var(--spacing-lg);
-    font-size: 1rem;
+    padding: 12px 24px;
+    font-size: 14px;
   }
 }
 
@@ -340,9 +399,11 @@ body {
 @keyframes pulse {
   0%, 100% {
     opacity: 1;
+    transform: scale(1);
   }
   50% {
-    opacity: 0.5;
+    opacity: 0.6;
+    transform: scale(1.1);
   }
 }
 
@@ -374,7 +435,7 @@ body {
   left: -100%;
   width: 100%;
   height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
   animation: loading 1.5s infinite;
 }
 
@@ -385,4 +446,23 @@ body {
   100% {
     left: 100%;
   }
+}
+
+/* Custom Scrollbar for Dark Theme */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--cport-dark-panel);
+}
+
+::-webkit-scrollbar-thumb {
+  background: #4a4a4a;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #6a6a6a;
 }

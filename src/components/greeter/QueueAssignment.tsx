@@ -12,41 +12,98 @@ const QueueAssignment: React.FC<QueueAssignmentProps> = ({ customers }) => {
 
     const getMoodColor = (mood: string) => {
         switch (mood) {
-            case 'urgent': return 'text-red-500';
-            case 'anxious': return 'text-yellow-500';
-            default: return 'text-green-500';
+            case 'urgent': return '#ef4444';
+            case 'anxious': return '#f59e0b';
+            default: return '#10b981';
         }
     };
 
     return (
-        <div className="bg-white p-6 rounded-lg shadow-md">
-            <h3 className="text-lg font-semibold mb-4 text-gray-800">Queue Status</h3>
+        <div style={{
+            backgroundColor: '#1a1a1a',
+            padding: '24px',
+            borderRadius: '12px',
+            boxShadow: '0 5px 15px rgba(0, 0, 0, 0.4)',
+            border: '1px solid #333333'
+        }}>
+            <h3 style={{
+                fontSize: '20px',
+                fontWeight: '600',
+                marginBottom: '16px',
+                color: '#ffffff'
+            }}>
+                Queue Status
+            </h3>
 
-            <div className="space-y-4">
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                 <div>
-                    <h4 className="font-medium text-gray-700 mb-2">
+                    <h4 style={{
+                        fontWeight: '500',
+                        color: '#ffffff',
+                        marginBottom: '8px',
+                        fontSize: '16px'
+                    }}>
                         Teller Line ({simpleQueue.length})
                     </h4>
-                    <div className="space-y-2">
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                         {simpleQueue.length === 0 ? (
-                            <p className="text-sm text-gray-500">No customers waiting</p>
+                            <p style={{ fontSize: '14px', color: '#999999' }}>No customers waiting</p>
                         ) : (
                             simpleQueue.map((customer) => (
-                                <div key={customer.id} className="bg-gray-50 p-3 rounded border-l-4 border-cport-blue">
-                                    <div className="flex justify-between items-start">
+                                <div key={customer.id} style={{
+                                    backgroundColor: '#0a0a0a',
+                                    padding: '12px',
+                                    borderRadius: '8px',
+                                    borderLeft: '4px solid #3b82f6',
+                                    border: '1px solid #333333'
+                                }}>
+                                    <div style={{
+                                        display: 'flex',
+                                        justifyContent: 'space-between',
+                                        alignItems: 'flex-start'
+                                    }}>
                                         <div>
-                                            <p className="font-medium">{customer.name || 'Customer'}</p>
-                                            <p className="text-sm text-gray-600">{customer.language.toUpperCase()}</p>
+                                            <p style={{
+                                                fontWeight: '500',
+                                                color: '#ffffff',
+                                                margin: '0 0 2px 0'
+                                            }}>
+                                                {customer.name || 'Customer'}
+                                            </p>
+                                            <p style={{
+                                                fontSize: '14px',
+                                                color: '#999999',
+                                                margin: 0
+                                            }}>
+                                                {customer.language.toUpperCase()}
+                                            </p>
                                         </div>
-                                        <div className="text-right">
-                                            <p className={`text-sm font-medium ${getMoodColor(customer.mood || 'calm')}`}>
+                                        <div style={{ textAlign: 'right' }}>
+                                            <p style={{
+                                                fontSize: '14px',
+                                                fontWeight: '500',
+                                                margin: '0 0 2px 0',
+                                                color: getMoodColor(customer.mood || 'calm')
+                                            }}>
                                                 {customer.mood}
                                             </p>
-                                            <p className="text-xs text-gray-500">{customer.estimatedWaitTime}min</p>
+                                            <p style={{
+                                                fontSize: '12px',
+                                                color: '#999999',
+                                                margin: 0
+                                            }}>
+                                                {customer.estimatedWaitTime}min
+                                            </p>
                                         </div>
                                     </div>
                                     {customer.notes && (
-                                        <p className="text-sm text-gray-600 mt-1">{customer.notes}</p>
+                                        <p style={{
+                                            fontSize: '14px',
+                                            color: '#cccccc',
+                                            marginTop: '8px'
+                                        }}>
+                                            {customer.notes}
+                                        </p>
                                     )}
                                 </div>
                             ))
@@ -55,29 +112,73 @@ const QueueAssignment: React.FC<QueueAssignmentProps> = ({ customers }) => {
                 </div>
 
                 <div>
-                    <h4 className="font-medium text-gray-700 mb-2">
+                    <h4 style={{
+                        fontWeight: '500',
+                        color: '#ffffff',
+                        marginBottom: '8px',
+                        fontSize: '16px'
+                    }}>
                         Private Consultation ({complexQueue.length})
                     </h4>
-                    <div className="space-y-2">
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                         {complexQueue.length === 0 ? (
-                            <p className="text-sm text-gray-500">No customers waiting</p>
+                            <p style={{ fontSize: '14px', color: '#999999' }}>No customers waiting</p>
                         ) : (
                             complexQueue.map((customer) => (
-                                <div key={customer.id} className="bg-gray-50 p-3 rounded border-l-4 border-cport-green">
-                                    <div className="flex justify-between items-start">
+                                <div key={customer.id} style={{
+                                    backgroundColor: '#0a0a0a',
+                                    padding: '12px',
+                                    borderRadius: '8px',
+                                    borderLeft: '4px solid #059669',
+                                    border: '1px solid #333333'
+                                }}>
+                                    <div style={{
+                                        display: 'flex',
+                                        justifyContent: 'space-between',
+                                        alignItems: 'flex-start'
+                                    }}>
                                         <div>
-                                            <p className="font-medium">{customer.name || 'Customer'}</p>
-                                            <p className="text-sm text-gray-600">{customer.language.toUpperCase()}</p>
+                                            <p style={{
+                                                fontWeight: '500',
+                                                color: '#ffffff',
+                                                margin: '0 0 2px 0'
+                                            }}>
+                                                {customer.name || 'Customer'}
+                                            </p>
+                                            <p style={{
+                                                fontSize: '14px',
+                                                color: '#999999',
+                                                margin: 0
+                                            }}>
+                                                {customer.language.toUpperCase()}
+                                            </p>
                                         </div>
-                                        <div className="text-right">
-                                            <p className={`text-sm font-medium ${getMoodColor(customer.mood || 'calm')}`}>
+                                        <div style={{ textAlign: 'right' }}>
+                                            <p style={{
+                                                fontSize: '14px',
+                                                fontWeight: '500',
+                                                margin: '0 0 2px 0',
+                                                color: getMoodColor(customer.mood || 'calm')
+                                            }}>
                                                 {customer.mood}
                                             </p>
-                                            <p className="text-xs text-gray-500">{customer.estimatedWaitTime}min</p>
+                                            <p style={{
+                                                fontSize: '12px',
+                                                color: '#999999',
+                                                margin: 0
+                                            }}>
+                                                {customer.estimatedWaitTime}min
+                                            </p>
                                         </div>
                                     </div>
                                     {customer.notes && (
-                                        <p className="text-sm text-gray-600 mt-1">{customer.notes}</p>
+                                        <p style={{
+                                            fontSize: '14px',
+                                            color: '#cccccc',
+                                            marginTop: '8px'
+                                        }}>
+                                            {customer.notes}
+                                        </p>
                                     )}
                                 </div>
                             ))
