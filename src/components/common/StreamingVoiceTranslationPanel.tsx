@@ -66,8 +66,16 @@ const StreamingVoiceTranslationPanel: React.FC<StreamingVoiceTranslationPanelPro
 
     // Initialize WebSocket connection
     useEffect(() => {
+        // Cloud Run supports WebSockets but with timeout limits
+        // Use websocket first, fallback to polling if needed
         const socket = io(API_BASE.replace('/api', ''), {
-            transports: ['websocket', 'polling']
+            transports: ['websocket', 'polling'],
+            reconnection: true,
+            reconnectionDelay: 1000,
+            reconnectionDelayMax: 5000,
+            reconnectionAttempts: Infinity,
+            timeout: 20000,
+            forceNew: false
         });
         socketRef.current = socket;
 

@@ -41,6 +41,17 @@ const upload = multer({
 // Initialize AI Service
 const aiService = new AIService();
 
+// Initialize NER service for name protection (loads model at startup)
+const nerService = require('./services/nerService');
+(async () => {
+    try {
+        await nerService.loadNER();
+        console.log('✅ NER service initialized for name protection');
+    } catch (error) {
+        console.warn('⚠️ NER service failed to initialize, name protection disabled:', error.message);
+    }
+})();
+
 // Mock data for development
 let customers = [];
 let sessions = [];
@@ -124,8 +135,9 @@ io.on('connection', (socket) => {
                 console.log('📝 Processing translation for text:', transcriptionResult.text);
                 
                 // Process translation
+                const sessionId = socket.translationSession?.sessionId;
                 const translationResult = await aiService.streamingTranslation(
-                    transcriptionResult.text, sourceLanguage, targetLanguage, isFinal
+                    transcriptionResult.text, sourceLanguage, targetLanguage, isFinal, sessionId
                 );
 
                 console.log('🔄 Translation result:', translationResult);
@@ -288,11 +300,14 @@ app.post('/api/translate-speech', upload.single('audio'), async (req, res) => {
             parsedEmotionalContext = { emotionalTone: 'professional' };
         }
 
+        const sessionId = req.body.sessionId || req.query.sessionId;
+        
         const translationResult = await aiService.speechToSpeechTranslation(
             req.file.buffer,
             sourceLanguage,
             targetLanguage,
-            parsedEmotionalContext
+            parsedEmotionalContext,
+            sessionId
         );
 
         if (!translationResult || !translationResult.success) {

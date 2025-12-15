@@ -4,7 +4,7 @@
 
 ✅ **Completed:**
 - Redis Cloud database: `database-MFK63ZDC`
-- Redis endpoint: `redis-19064.c83.us-east-1-2.ec2.redns.redis-cloud.com:19064`
+- Redis endpoint: `redis-17753.c83.us-east-1-2.ec2.cloud.redislabs.com:17753`
 - Local development environment working
 - Docker files created
 
@@ -38,7 +38,7 @@ HUME_API_KEY=your-actual-hume-api-key
 HUME_SECRET_KEY=your-actual-hume-secret-key
 
 # Redis Cloud Configuration (Already configured)
-REDIS_URL=redis://redis-19064.c83.us-east-1-2.ec2.redns.redis-cloud.com:19064
+REDIS_URL=redis://default:Srq64jruxee5dHyTwBRK2USE32NLWCoZ@redis-17753.c83.us-east-1-2.ec2.cloud.redislabs.com:17753
 REDIS_CACHE_ENABLED=true
 
 # Google STT Configuration
@@ -118,7 +118,7 @@ If your Redis Cloud instance requires authentication:
 
 2. **Update Redis URL:**
    ```bash
-   REDIS_URL=redis://:your-password@redis-19064.c83.us-east-1-2.ec2.redns.redis-cloud.com:19064
+   REDIS_URL=redis://default:Srq64jruxee5dHyTwBRK2USE32NLWCoZ@redis-17753.c83.us-east-1-2.ec2.cloud.redislabs.com:17753
    ```
 
 ### 6. Test Deployment
@@ -148,7 +148,7 @@ If your Redis Cloud instance requires authentication:
 ### Redis Connection Issues
 ```bash
 # Test Redis connection
-redis-cli -h redis-19064.c83.us-east-1-2.ec2.redns.redis-cloud.com -p 19064 ping
+redis-cli -u redis://default:Srq64jruxee5dHyTwBRK2USE32NLWCoZ@redis-17753.c83.us-east-1-2.ec2.cloud.redislabs.com:17753 ping
 ```
 
 ### Environment Variables

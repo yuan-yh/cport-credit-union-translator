@@ -26,6 +26,20 @@ class GoogleSTTService {
             // Write input buffer to temporary file
             fs.writeFileSync(tempInputPath, audioBuffer);
             
+            // Add timeout for ffmpeg conversion (5 seconds)
+            const timeout = setTimeout(() => {
+                try {
+                    ffmpeg.kill('SIGTERM');
+                } catch (e) {}
+                try {
+                    fs.unlinkSync(tempInputPath);
+                } catch (e) {}
+                try {
+                    fs.unlinkSync(tempOutputPath);
+                } catch (e) {}
+                reject(new Error('ffmpeg conversion timed out after 5 seconds'));
+            }, 5000);
+            
             // Convert using ffmpeg
             const ffmpeg = spawn('ffmpeg', [
                 '-i', tempInputPath,
@@ -36,6 +50,7 @@ class GoogleSTTService {
             ]);
             
             ffmpeg.on('close', (code) => {
+                clearTimeout(timeout);
                 // Clean up input file
                 try {
                     fs.unlinkSync(tempInputPath);
@@ -55,7 +70,13 @@ class GoogleSTTService {
             });
             
             ffmpeg.on('error', (err) => {
-                reject(err);
+                clearTimeout(timeout);
+                // Check if ffmpeg is not found
+                if (err.code === 'ENOENT') {
+                    reject(new Error('ffmpeg is not installed. Please install it: brew install ffmpeg (macOS) or apt-get install ffmpeg (Linux)'));
+                } else {
+                    reject(err);
+                }
             });
         });
     }
@@ -78,6 +99,10 @@ class GoogleSTTService {
                 processedAudioBuffer = await this.convertWebMToWav(audioBuffer);
                 console.log(`🔄 Converted WebM to WAV: ${audioBuffer.length} -> ${processedAudioBuffer.length} bytes`);
             } catch (conversionError) {
+                if (conversionError.message.includes('ffmpeg is not installed')) {
+                    console.error('❌ ffmpeg is required for Google STT. Install it with: brew install ffmpeg');
+                    throw conversionError;
+                }
                 console.log('⚠️ WebM conversion failed, using original buffer:', conversionError.message);
             }
 
@@ -97,25 +122,57 @@ class GoogleSTTService {
             };
 
             console.log('📡 Sending request to Google STT API...');
-            const response = await fetch(`${this.baseUrl}?key=${this.apiKey}`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(request)
-            });
+            
+            // Add timeout to prevent hanging (10 seconds for Cloud Run)
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 10000);
+            
+            let response;
+            try {
+                response = await fetch(`${this.baseUrl}?key=${this.apiKey}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(request),
+                    signal: controller.signal
+                });
+                clearTimeout(timeoutId);
+            } catch (fetchError) {
+                clearTimeout(timeoutId);
+                if (fetchError.name === 'AbortError') {
+                    throw new Error('Google STT API request timed out after 10 seconds');
+                }
+                throw fetchError;
+            }
 
             if (!response.ok) {
                 const errorText = await response.text();
-                console.log('🔍 Google STT Error Details:', {
+                let errorDetails;
+                try {
+                    errorDetails = JSON.parse(errorText);
+                } catch (e) {
+                    errorDetails = errorText;
+                }
+                
+                console.error('🔍 Google STT Error Details:', {
                     status: response.status,
                     statusText: response.statusText,
-                    errorBody: errorText,
+                    error: errorDetails,
+                    apiKeyPresent: !!this.apiKey,
+                    apiKeyLength: this.apiKey ? this.apiKey.length : 0,
                     config: config,
-                    audioSize: audioBuffer.length,
-                    audioStart: audioBuffer.slice(0, 20).toString('hex')
+                    audioSize: processedAudioBuffer.length
                 });
-                throw new Error(`Google STT API error: ${response.status} ${response.statusText}`);
+                
+                // Provide helpful error messages
+                if (response.status === 401 || response.status === 403) {
+                    throw new Error(`Google STT API authentication failed. Check your API key. Status: ${response.status}`);
+                } else if (response.status === 400) {
+                    throw new Error(`Google STT API bad request: ${JSON.stringify(errorDetails)}`);
+                } else {
+                    throw new Error(`Google STT API error: ${response.status} ${response.statusText} - ${JSON.stringify(errorDetails)}`);
+                }
             }
 
             const data = await response.json();
@@ -157,14 +214,23 @@ class GoogleSTTService {
         const startTime = Date.now();
         
         try {
+            // Convert WebM to WAV if needed
+            let processedAudioBuffer = audioBuffer;
+            try {
+                processedAudioBuffer = await this.convertWebMToWav(audioBuffer);
+            } catch (conversionError) {
+                if (conversionError.message.includes('ffmpeg is not installed')) {
+                    console.error('❌ ffmpeg is required for Google STT. Install it with: brew install ffmpeg');
+                    throw conversionError;
+                }
+                console.log('⚠️ WebM conversion failed, using original buffer:', conversionError.message);
+            }
+
             const config = {
                 encoding: 'LINEAR16',
-                sampleRateHertz: 48000,
+                sampleRateHertz: 16000,
                 languageCode: language === 'auto' ? 'en-US' : language,
-                model: 'default', // Use default supported model
-                enableAutomaticPunctuation: true,
-                enableWordTimeOffsets: false,
-                enableWordConfidence: false
+                enableAutomaticPunctuation: true
             };
 
             const request = {
@@ -174,7 +240,7 @@ class GoogleSTTService {
                 }
             };
 
-            const response = await fetch(`${this.baseUrl}`, {
+            const response = await fetch(`${this.baseUrl}?key=${this.apiKey}`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -184,15 +250,29 @@ class GoogleSTTService {
 
             if (!response.ok) {
                 const errorText = await response.text();
-                console.log('🔍 Google STT Error Details:', {
+                let errorDetails;
+                try {
+                    errorDetails = JSON.parse(errorText);
+                } catch (e) {
+                    errorDetails = errorText;
+                }
+                
+                console.error('🔍 Google STT Error Details:', {
                     status: response.status,
                     statusText: response.statusText,
-                    errorBody: errorText,
-                    config: config,
-                    audioSize: audioBuffer.length,
-                    audioStart: audioBuffer.slice(0, 20).toString('hex')
+                    error: errorDetails,
+                    apiKeyPresent: !!this.apiKey,
+                    apiKeyLength: this.apiKey ? this.apiKey.length : 0
                 });
-                throw new Error(`Google STT API error: ${response.status} ${response.statusText}`);
+                
+                // Provide helpful error messages
+                if (response.status === 401 || response.status === 403) {
+                    throw new Error(`Google STT API authentication failed. Check your API key. Status: ${response.status}`);
+                } else if (response.status === 400) {
+                    throw new Error(`Google STT API bad request: ${JSON.stringify(errorDetails)}`);
+                } else {
+                    throw new Error(`Google STT API error: ${response.status} ${response.statusText} - ${JSON.stringify(errorDetails)}`);
+                }
             }
 
             const data = await response.json();

@@ -1,3 +1,5 @@
+const crypto = require('crypto');
+
 class RedisCacheService {
     constructor() {
         this.isEnabled = process.env.REDIS_CACHE_ENABLED === 'true';
@@ -111,6 +113,19 @@ class RedisCacheService {
     }
 
     /**
+     * Generate TTS cache key using SHA-256 hash
+     */
+    generateTTSCacheKey(text, voice = 'default') {
+        const normalizedText = text.trim();
+        // Use SHA-256 hash to ensure unique keys and prevent collisions
+        const hash = crypto.createHash('sha256')
+            .update(`${normalizedText}:${voice}`)
+            .digest('hex')
+            .substring(0, 32); // Use first 32 chars of hex (128 bits, collision-resistant)
+        return `tts:${voice}:${hash}`;
+    }
+
+    /**
      * Get cached TTS audio
      */
     async getCachedTTS(text, voice = 'default') {
@@ -119,7 +134,7 @@ class RedisCacheService {
         }
 
         try {
-            const key = `tts:${voice}:${Buffer.from(text).toString('base64')}`;
+            const key = this.generateTTSCacheKey(text, voice);
             const cached = await this.redis.get(key);
             
             if (cached) {
@@ -143,7 +158,7 @@ class RedisCacheService {
         }
 
         try {
-            const key = `tts:${voice}:${Buffer.from(text).toString('base64')}`;
+            const key = this.generateTTSCacheKey(text, voice);
             const base64Audio = audioBuffer.toString('base64');
             
             // Cache for 7 days
@@ -157,11 +172,15 @@ class RedisCacheService {
     }
 
     /**
-     * Generate cache key
+     * Generate cache key using SHA-256 hash to prevent collisions
      */
     generateCacheKey(originalText, sourceLanguage, targetLanguage) {
         const normalizedText = originalText.toLowerCase().trim();
-        const hash = Buffer.from(normalizedText).toString('base64').substring(0, 16);
+        // Use SHA-256 hash to ensure unique keys and prevent collisions
+        const hash = crypto.createHash('sha256')
+            .update(`${normalizedText}:${sourceLanguage}:${targetLanguage}`)
+            .digest('hex')
+            .substring(0, 32); // Use first 32 chars of hex (128 bits, collision-resistant)
         return `translation:${sourceLanguage}:${targetLanguage}:${hash}`;
     }
 

@@ -1,28 +1,29 @@
-# Use Node.js 18 Alpine for smaller image size
-FROM node:20-alpine
+# Use Node.js 20 Debian-based image for ONNX Runtime compatibility
+FROM node:20-slim
 
 # Set working directory
 WORKDIR /app
 
-# Install system dependencies for audio processing
-RUN apk add --no-cache \
+# Install system dependencies for audio processing and ONNX Runtime
+RUN apt-get update && apt-get install -y \
     python3 \
     make \
     g++ \
-    ffmpeg
+    ffmpeg \
+    && rm -rf /var/lib/apt/lists/*
 
-# Copy package files
-COPY package*.json ./
+# Copy package files from server directory
+COPY server/package*.json ./
 
 # Install dependencies
 RUN npm install --only=production
 
 # Copy server code
-COPY . ./
+COPY server/ ./
 
 # Create non-root user for security
-RUN addgroup -g 1001 -S nodejs && \
-    adduser -S nodejs -u 1001
+RUN groupadd -r nodejs -g 1001 && \
+    useradd -r -g nodejs -u 1001 nodejs
 
 # Change ownership of the app directory
 RUN chown -R nodejs:nodejs /app

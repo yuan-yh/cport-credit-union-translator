@@ -23,7 +23,7 @@ services:
     environment:
       - NODE_ENV=production
       - PORT=3001
-      - REDIS_URL=redis://redis-19064.c83.us-east-1-2.ec2.redns.redis-cloud.com:19064
+      - REDIS_URL=redis://default:Srq64jruxee5dHyTwBRK2USE32NLWCoZ@redis-17753.c83.us-east-1-2.ec2.cloud.redislabs.com:17753
       - REDIS_CACHE_ENABLED=true
       - CONVERSATION_CACHE_ENABLED=true
       - GOOGLE_STT_ENABLED=true

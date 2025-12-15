@@ -5,6 +5,10 @@ const { spawn } = require('child_process');
 // const ConversationCache = require('./conversationCache'); // Disabled due to sqlite3 issues
 const GoogleSTTService = require('./googleSTTService');
 const RedisCacheService = require('./redisCacheService');
+const nerService = require('./nerService');
+const nameMaskingService = require('./nameMaskingService'); // Keep for backward compatibility
+const entityMaskingService = require('./entityMaskingService');
+const conversationContextService = require('./conversationContextService');
 
 class AIService {
     constructor() {
@@ -390,7 +394,7 @@ class AIService {
     /**
      * Streaming translation with partial text
      */
-    async streamingTranslation(partialText, sourceLanguage, targetLanguage, isFinal = false) {
+    async streamingTranslation(partialText, sourceLanguage, targetLanguage, isFinal = false, sessionId = null) {
         try {
             if (!partialText || !partialText.trim()) {
                 return { success: true, translatedText: '', isPartial: true };
@@ -428,18 +432,64 @@ class AIService {
                 return { success: true, translatedText: partialText, isPartial: true };
             }
 
+            // Detect and mask all entities (names + banking) before translation
+            let originalText = partialText;
+            let entityMapping = {};
+            let maskedText = originalText;
+            let detectedEntities = [];
+            
+            try {
+                // Only do entity detection for final translations or longer partials to avoid overhead
+                if (isFinal || partialText.length > 20) {
+                    const entityResults = await nerService.detectAllEntities(originalText);
+                    detectedEntities = [...entityResults.names.map(n => ({ ...n, type: 'PERSON' })), ...entityResults.banking];
+                    
+                    if (detectedEntities.length > 0) {
+                        const maskingResult = entityMaskingService.maskEntities(originalText, detectedEntities);
+                        maskedText = maskingResult.maskedText;
+                        entityMapping = maskingResult.mapping;
+                        
+                        const nameCount = entityResults.names.length;
+                        const bankingCount = entityResults.banking.length;
+                        if (isFinal) {
+                            console.log(`🛡️ Masked ${nameCount} name(s) and ${bankingCount} banking entity/entities in streaming translation`);
+                            console.log(`📝 Original: "${originalText}"`);
+                            console.log(`🎭 Masked: "${maskedText}"`);
+                            console.log(`🔑 Mapping:`, entityMapping);
+                        }
+                    } else if (isFinal) {
+                        console.log(`⚠️ No entities detected in: "${originalText}"`);
+                    }
+                }
+            } catch (nerError) {
+                console.warn('⚠️ Entity detection failed in streaming, proceeding without masking:', nerError.message);
+                // Continue without masking if NER fails
+            }
+
+            // Get conversation context for final translations
+            let contextPrompt = '';
+            if (sessionId && isFinal) {
+                contextPrompt = conversationContextService.formatContextForPrompt(sessionId, sourceLanguage, targetLanguage);
+            }
+
             // Ultra-fast translation with minimal settings
             const startTime = Date.now();
+            // Add placeholder preservation instruction if entities are masked
+            const placeholderInstruction = Object.keys(entityMapping).length > 0
+                ? `\n\nCRITICAL: The text contains placeholders like __PERSON_0__, __ACCOUNT_0__, etc. DO NOT translate, modify, or change these placeholders. Keep them exactly as they appear in the original text.`
+                : '';
+            const systemPrompt = `Translate from ${sourceLanguage} to ${targetLanguage}. Return ONLY the translated text.${placeholderInstruction}${contextPrompt}`;
+            
             const response = await this.openai.chat.completions.create({
                 model: this.translationModel,
                 messages: [
                     {
                         role: "system",
-                        content: `Translate from ${sourceLanguage} to ${targetLanguage}. Return ONLY the translated text.`
+                        content: systemPrompt
                     },
                     {
                         role: "user",
-                        content: partialText
+                        content: maskedText // Use masked text
                     }
                 ],
                 temperature: 0.1, // Use 0.1 instead of 0 for compatibility
@@ -447,7 +497,24 @@ class AIService {
                 stream: false // Disable streaming for faster response
             });
 
-            const translatedText = response.choices[0]?.message?.content || '';
+            let translatedText = response.choices[0]?.message?.content || '';
+            
+            // Restore entities after translation
+            if (Object.keys(entityMapping).length > 0) {
+                translatedText = entityMaskingService.unmaskEntities(translatedText, entityMapping);
+                if (isFinal) {
+                    const isValid = entityMaskingService.validateUnmasking(translatedText);
+                    if (!isValid) {
+                        console.warn('⚠️ Some entity placeholders may not have been restored in streaming translation');
+                    }
+                }
+            }
+
+            // Update conversation context for final translations
+            if (sessionId && isFinal) {
+                conversationContextService.addTurn(sessionId, 'customer', originalText, detectedEntities);
+            }
+            
             const duration = Date.now() - startTime;
             console.log(`⚡ Ultra-fast translation: ${duration}ms`);
 
@@ -593,7 +660,30 @@ class AIService {
             });
 
             if (!response.ok) {
-                throw new Error(`Google TTS API error: ${response.status} ${response.statusText}`);
+                const errorText = await response.text();
+                let errorDetails;
+                try {
+                    errorDetails = JSON.parse(errorText);
+                } catch (e) {
+                    errorDetails = errorText;
+                }
+                
+                console.error('🔍 Google TTS Error Details:', {
+                    status: response.status,
+                    statusText: response.statusText,
+                    error: errorDetails,
+                    apiKeyPresent: !!this.googleTTSApiKey,
+                    apiKeyLength: this.googleTTSApiKey ? this.googleTTSApiKey.length : 0
+                });
+                
+                // Provide helpful error messages
+                if (response.status === 401 || response.status === 403) {
+                    throw new Error(`Google TTS API authentication failed. Check your API key. Status: ${response.status}`);
+                } else if (response.status === 400) {
+                    throw new Error(`Google TTS API bad request: ${JSON.stringify(errorDetails)}`);
+                } else {
+                    throw new Error(`Google TTS API error: ${response.status} ${response.statusText} - ${JSON.stringify(errorDetails)}`);
+                }
             }
 
             const result = await response.json();
@@ -813,7 +903,7 @@ class AIService {
     /**
      * Perform speech-to-speech translation with emotional context (OpenAI pipeline)
      */
-    async openaiSpeechToSpeechTranslation(audioBuffer, sourceLanguage, targetLanguage, emotionalContext) {
+    async openaiSpeechToSpeechTranslation(audioBuffer, sourceLanguage, targetLanguage, emotionalContext, sessionId = null) {
         try {
             const startTime = Date.now();
             let transcription;
@@ -904,17 +994,59 @@ class AIService {
                 console.log('💾 Using cached metadata; proceeding with strict translation to avoid reply-style outputs');
             }
 
-            // Step 2: Translate with emotional context and banking terminology (OPTIMIZED FOR SPEED)
+            // Step 1.6: Detect and mask all entities (names + banking entities) to prevent translation
+            let originalText = transcription.text;
+            let entityMapping = {};
+            let maskedText = originalText;
+            let detectedEntities = [];
+            
+            try {
+                // Detect all entities (names + banking)
+                const entityResults = await nerService.detectAllEntities(originalText);
+                detectedEntities = [...entityResults.names.map(n => ({ ...n, type: 'PERSON' })), ...entityResults.banking];
+                
+                if (detectedEntities.length > 0) {
+                    const maskingResult = entityMaskingService.maskEntities(originalText, detectedEntities);
+                    maskedText = maskingResult.maskedText;
+                    entityMapping = maskingResult.mapping;
+                    
+                    const nameCount = entityResults.names.length;
+                    const bankingCount = entityResults.banking.length;
+                    console.log(`🛡️ Masked ${nameCount} name(s) and ${bankingCount} banking entity/entities before translation`);
+                    console.log(`📝 Original: "${originalText}"`);
+                    console.log(`🎭 Masked: "${maskedText}"`);
+                    console.log(`🔑 Mapping:`, entityMapping);
+                } else {
+                    console.log(`⚠️ No entities detected in: "${originalText}"`);
+                }
+            } catch (nerError) {
+                console.warn('⚠️ Entity detection failed, proceeding without masking:', nerError.message);
+                // Continue without masking if NER fails
+            }
+
+            // Step 1.7: Get conversation context (if sessionId provided)
+            let contextPrompt = '';
+            if (sessionId) {
+                contextPrompt = conversationContextService.formatContextForPrompt(sessionId, sourceLanguage, targetLanguage);
+            }
+
+            // Step 2: Translate with emotional context, banking terminology, and conversation context (OPTIMIZED FOR SPEED)
+            // Add placeholder preservation instruction if entities are masked
+            const placeholderInstruction = Object.keys(entityMapping).length > 0
+                ? `\n\nCRITICAL: The text contains placeholders like __PERSON_0__, __ACCOUNT_0__, etc. DO NOT translate, modify, or change these placeholders. Keep them exactly as they appear in the original text.`
+                : '';
+            const systemPrompt = this.getTranslationSystemPrompt(sourceLanguage, targetLanguage, emotionalContext) + placeholderInstruction + contextPrompt;
+            
             const translation = await this.openai.chat.completions.create({
                 model: this.translationModel,
                 messages: [
                     {
                         role: "system",
-                        content: this.getTranslationSystemPrompt(sourceLanguage, targetLanguage, emotionalContext)
+                        content: systemPrompt
                     },
                     {
                         role: "user",
-                        content: `Translate from ${sourceLanguage} to ${targetLanguage}.\nReturn ONLY the translated text, no extra words.\nIf already ${targetLanguage}, return unchanged.\n\nTEXT:\n${transcription.text}`
+                        content: `Translate from ${sourceLanguage} to ${targetLanguage}.\nReturn ONLY the translated text, no extra words.\nIf already ${targetLanguage}, return unchanged.\n\nTEXT:\n${maskedText}`
                     }
                 ],
                 temperature: 0.1,
@@ -924,11 +1056,29 @@ class AIService {
                 stream: false
             });
 
+            // Step 2.5: Restore entities after translation
+            let translatedText = translation.choices[0].message.content;
+            if (Object.keys(entityMapping).length > 0) {
+                translatedText = entityMaskingService.unmaskEntities(translatedText, entityMapping);
+                const isValid = entityMaskingService.validateUnmasking(translatedText);
+                if (!isValid) {
+                    console.warn('⚠️ Some entity placeholders may not have been restored');
+                } else {
+                    console.log('✅ All entities restored after translation');
+                }
+            }
+
+            // Step 2.6: Update conversation context (if sessionId provided)
+            if (sessionId) {
+                conversationContextService.addTurn(sessionId, 'customer', originalText, detectedEntities);
+            }
+
             // Step 3: Text-to-speech with appropriate voice (OPTIMIZED FOR SPEED)
+            // Use restored text (with names) for TTS
             const speech = await this.openai.audio.speech.create({
                 model: this.fastTTSModel, // Use faster TTS model
                 voice: this.selectVoiceForLanguage(targetLanguage, emotionalContext),
-                input: translation.choices[0].message.content,
+                input: translatedText, // Use restored text with names
                 speed: this.ttsSpeed, // Configurable speed for optimization
                 format: 'wav'
             });
@@ -941,8 +1091,8 @@ class AIService {
 
             // Step 4: Cache the successful translation
             await this.cacheTranslation({
-                originalText: transcription.text,
-                translatedText: translation.choices[0].message.content,
+                originalText: originalText,
+                translatedText: translatedText,
                 sourceLanguage,
                 targetLanguage,
                 emotionalContext,
@@ -953,8 +1103,8 @@ class AIService {
 
             return {
                 success: true,
-                originalText: transcription.text,
-                translatedText: translation.choices[0].message.content,
+                originalText: originalText,
+                translatedText: translatedText, // Use restored text with names
                 audioBuffer: translatedAudioBuffer,
                 sourceLanguage,
                 targetLanguage,
@@ -1049,7 +1199,7 @@ class AIService {
             }
             
             // Step 1: Full processing (existing flow)
-            return await this.openaiSpeechToSpeechTranslation(audioBuffer, sourceLanguage, targetLanguage, emotionalContext);
+            return await this.openaiSpeechToSpeechTranslation(audioBuffer, sourceLanguage, targetLanguage, emotionalContext, sessionId);
             
         } catch (error) {
             console.error('Speech-to-speech translation error:', error);
@@ -1060,8 +1210,22 @@ class AIService {
     /**
      * Get banking-specific prompt for Whisper
      */
-    getBankingPrompt(language) {
-        const prompts = {
+    /**
+     * Get accent-aware banking prompt for STT
+     * Includes banking vocabulary and accent hints
+     */
+    getBankingPrompt(language, accentHint = null) {
+        // Banking vocabulary to help STT recognize common terms
+        const bankingVocab = {
+            'en': 'account balance transaction deposit withdrawal transfer loan mortgage credit card debit card checking savings routing number account number PIN password statement fee interest rate payment due date',
+            'es': 'cuenta saldo transacción depósito retiro transferencia préstamo hipoteca tarjeta de crédito tarjeta de débito cuenta corriente ahorros número de ruteo número de cuenta PIN contraseña estado de cuenta tarifa tasa de interés pago fecha de vencimiento',
+            'pt': 'conta saldo transação depósito saque transferência empréstimo hipoteca cartão de crédito cartão de débito conta corrente poupança número de roteamento número da conta PIN senha extrato taxa taxa de juros pagamento data de vencimento',
+            'fr': 'compte solde transaction dépôt retrait transfert prêt hypothèque carte de crédit carte de débit compte courant épargne numéro de routage numéro de compte NIP mot de passe relevé frais taux d\'intérêt paiement date d\'échéance',
+            'ar': 'حساب رصيد معاملة إيداع سحب تحويل قرض رهن بطاقة ائتمان بطاقة خصم حساب جاري توفير رقم التوجيه رقم الحساب رقم التعريف كلمة المرور كشف حساب رسوم سعر الفائدة دفعة تاريخ الاستحقاق',
+            'so': 'koonto xisaab macaamil dhigaal lacag-bixinta wareejin deyn guri-qaad kaar deyn kaar bixinta koonto joogto kayd lambarka wareejinta lambarka koontada PIN erayga sirta ah warbixinta kharashka heerka faa\'iidada bixinta taariikhda u dhigma'
+        };
+
+        const basePrompts = {
             'en': 'Banking conversation about accounts, transactions, loans, deposits, withdrawals, credit cards, and financial services.',
             'es': 'Conversación bancaria sobre cuentas, transacciones, préstamos, depósitos, retiros, tarjetas de crédito y servicios financieros.',
             'pt': 'Conversa bancária sobre contas, transações, empréstimos, depósitos, saques, cartões de crédito e serviços financeiros.',
@@ -1070,7 +1234,45 @@ class AIService {
             'so': 'Wadahadal bangiga ah oo ku saabsan koontada, macaamil, deyn, dhigaal, lacag-bixinta, kaarka deynta, iyo adeegyada dhaqaalaha.'
         };
 
-        return prompts[language] || prompts['en'];
+        let prompt = basePrompts[language] || basePrompts['en'];
+        
+        // Add banking vocabulary
+        const vocab = bankingVocab[language] || bankingVocab['en'];
+        prompt += ` Common banking terms: ${vocab}.`;
+
+        // Add accent hint if provided
+        if (accentHint) {
+            const accentHints = {
+                'es': {
+                    'mexican': 'Mexican Spanish accent',
+                    'caribbean': 'Caribbean Spanish accent',
+                    'spain': 'Spain Spanish accent',
+                    'central-american': 'Central American Spanish accent'
+                },
+                'en': {
+                    'hispanic': 'Hispanic English accent',
+                    'asian': 'Asian English accent',
+                    'african': 'African English accent',
+                    'european': 'European English accent'
+                },
+                'pt': {
+                    'brazilian': 'Brazilian Portuguese accent',
+                    'european': 'European Portuguese accent'
+                },
+                'fr': {
+                    'african': 'African French accent',
+                    'canadian': 'Canadian French accent',
+                    'european': 'European French accent'
+                }
+            };
+
+            const hints = accentHints[language];
+            if (hints && hints[accentHint]) {
+                prompt += ` Note: Speaker has ${hints[accentHint]}.`;
+            }
+        }
+
+        return prompt;
     }
 
     /**
