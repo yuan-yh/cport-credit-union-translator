@@ -560,14 +560,53 @@ class AIService {
     /**
      * Streaming TTS for immediate audio feedback
      */
-    async streamingTTS(text, isPartial = false) {
+    async streamingTTS(text, isPartial = false, sourceLanguage = 'en', targetLanguage = 'en') {
         try {
             if (!text || !text.trim()) {
                 return { success: true, audioBuffer: null, isPartial: true };
             }
 
             const startTime = Date.now();
-            
+
+            // Special-case: Staff English → French (customer-heard audio)
+            // For this path we want a more natural African-sounding French voice,
+            // so we bypass Google TTS and go straight to OpenAI TTS locally.
+            const isStaffEnglishToFrench =
+                !isPartial &&
+                sourceLanguage === 'en' &&
+                targetLanguage === 'fr';
+
+            if (isStaffEnglishToFrench) {
+                try {
+                    const ttsModel = this.fastTTSModel || 'gpt-4o-mini-tts';
+                    console.log(`🎵 Using OpenAI TTS model "${ttsModel}" for staff English → French path`);
+
+                    const response = await this.openai.audio.speech.create({
+                        model: ttsModel,
+                        // For non-English, OpenAI adapts the voice; we pick a professional voice
+                        voice: this.selectVoiceForLanguage('en', { emotionalTone: 'professional' }),
+                        input: text,
+                        speed: this.ttsSpeed || 1.0,
+                        format: 'wav'
+                    });
+
+                    const audioBuffer = Buffer.from(await response.arrayBuffer());
+                    const duration = Date.now() - startTime;
+                    console.log(`⚡ OpenAI FR TTS (staff → customer) generated in ${duration}ms`);
+
+                    return {
+                        success: true,
+                        audioBuffer,
+                        isPartial,
+                        timestamp: Date.now(),
+                        processingTime: duration
+                    };
+                } catch (openaiError) {
+                    console.error('❌ OpenAI FR TTS (staff → customer) failed, falling back to default TTS path:', openaiError.message);
+                    // Fall through to default Google / OpenAI flow below
+                }
+            }
+
             // Check Redis cache first for TTS
             const cachedAudio = await this.redisCache.getCachedTTS(text, 'google-tts');
             if (cachedAudio) {

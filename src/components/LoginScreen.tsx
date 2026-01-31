@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
 import type { UserRole } from '../types';
@@ -7,6 +7,14 @@ const LoginScreen: React.FC = () => {
     const navigate = useNavigate();
     const { dispatch } = useApp();
     const [selectedRole, setSelectedRole] = useState<UserRole>('greeter');
+
+    // Redirect to UI selection if no preference is set
+    useEffect(() => {
+        const uiPreference = localStorage.getItem('uiPreference');
+        if (!uiPreference) {
+            navigate('/');
+        }
+    }, [navigate]);
 
     const handleLogin = () => {
         const mockUser = {

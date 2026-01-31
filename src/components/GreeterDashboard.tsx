@@ -1,17 +1,25 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
+import { useUIPreference } from '../hooks/useUIPreference';
 import type { Customer } from '../types';
 import Header from './common/Header';
 import LanguageSelector from './greeter/LanguageSelector';
 import StreamingVoiceTranslationPanel from './common/StreamingVoiceTranslationPanel';
 import CustomerForm from './greeter/CustomerForm';
 import QueueAssignment from './greeter/QueueAssignment';
+import RedButtonUI from './RedButtonUI';
 
 const GreeterDashboard: React.FC = () => {
     const { state, dispatch } = useApp();
+    const uiPreference = useUIPreference();
     const [currentLanguage, setCurrentLanguage] = useState('en');
     const [showTranslation, setShowTranslation] = useState(false);
     const [customerData, setCustomerData] = useState<Partial<Customer>>({});
+
+    // Render Red Button UI if selected
+    if (uiPreference === 'red-button') {
+        return <RedButtonUI />;
+    }
 
     const handleCustomerSubmit = (customer: Partial<Customer>) => {
         const newCustomer: Customer = {

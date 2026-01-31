@@ -156,7 +156,10 @@ io.on('connection', (socket) => {
                     if (isFinal && translationResult.translatedText) {
                         console.log('🔊 Generating TTS for:', translationResult.translatedText);
                         const ttsResult = await aiService.streamingTTS(
-                            translationResult.translatedText, false
+                            translationResult.translatedText,
+                            false,
+                            sourceLanguage,
+                            targetLanguage
                         );
 
                         console.log('🔊 TTS result:', ttsResult);
@@ -203,8 +206,15 @@ io.on('connection', (socket) => {
             const { text, sessionId, isBuffered = false } = data;
             console.log(`🔊 TTS request: "${text}" (buffered: ${isBuffered})`);
 
+            const { sourceLanguage, targetLanguage } = socket.translationSession;
+
             // Generate TTS audio
-            const ttsResult = await aiService.streamingTTS(text, !isBuffered);
+            const ttsResult = await aiService.streamingTTS(
+                text,
+                !isBuffered,
+                sourceLanguage,
+                targetLanguage
+            );
             
             if (ttsResult.success && ttsResult.audioBuffer) {
                 console.log('🔊 TTS generated successfully');

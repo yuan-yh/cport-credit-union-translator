@@ -1,10 +1,18 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
+import { useUIPreference } from '../hooks/useUIPreference';
 import Header from './common/Header';
 import StreamingVoiceTranslationPanel from './common/StreamingVoiceTranslationPanel';
+import RedButtonUI from './RedButtonUI';
 
 const ConsultorDashboard: React.FC = () => {
     const { state, dispatch } = useApp();
+    const uiPreference = useUIPreference();
+
+    // Render Red Button UI if selected
+    if (uiPreference === 'red-button') {
+        return <RedButtonUI />;
+    }
     const [currentCustomer, setCurrentCustomer] = useState<string | null>(null);
     const [showTranslation, setShowTranslation] = useState(false);
     const [serviceProgress, setServiceProgress] = useState(0);
