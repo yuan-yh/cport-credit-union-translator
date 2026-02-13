@@ -26,7 +26,7 @@ db.pragma('foreign_keys = ON');
 db.pragma('journal_mode = WAL');
 
 // =============================================================================
-// SCHEMA INITIALIZATION
+// SCHEMA INITIALIZATION - Run immediately to ensure tables exist
 // =============================================================================
 
 function initializeSchema() {
@@ -36,6 +36,9 @@ function initializeSchema() {
   db.exec(schema);
   console.log('✓ Database schema initialized');
 }
+
+// Initialize schema immediately on module load
+initializeSchema();
 
 // =============================================================================
 // SEED DATA
@@ -124,7 +127,7 @@ async function seedDatabase() {
 }
 
 // =============================================================================
-// USER QUERIES
+// USER QUERIES - Now safe since schema is initialized above
 // =============================================================================
 
 const userQueries = {

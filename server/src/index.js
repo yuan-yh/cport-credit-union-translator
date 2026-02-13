@@ -9,7 +9,7 @@ const cors = require('cors');
 const cookieParser = require('cookie-parser');
 const http = require('http');
 const { Server } = require('socket.io');
-const { initializeSchema, seedDatabase } = require('./database');
+const { seedDatabase } = require('./database');
 
 // Import routes
 const authRoutes = require('./routes/auth');
@@ -107,7 +107,7 @@ socketHandler(io);
 
 async function initializeDatabase() {
   try {
-    initializeSchema();
+    // Schema is already initialized when database module loads
     await seedDatabase();
     console.log('✓ Database ready');
   } catch (error) {
