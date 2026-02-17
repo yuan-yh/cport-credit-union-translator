@@ -5,6 +5,7 @@ import { VoiceControls } from './VoiceControls';
 import { TranscriptPanel } from './TranscriptPanel';
 import { SUPPORTED_LANGUAGES, type LanguageCode, type Translation } from '../../types';
 import { api } from '../../lib/api';
+import { useStreamingAudio } from '../../hooks/useStreamingAudio';
 import { PanelRightOpen, PanelRightClose } from 'lucide-react';
 
 interface VoiceTranslationProps {
@@ -30,6 +31,9 @@ export function VoiceTranslation({
   const audioChunksRef = useRef<Blob[]>([]);
   const streamRef = useRef<MediaStream | null>(null);
 
+  // Streaming TTS for faster audio playback
+  const { playStreamingAudio, stopAudio } = useStreamingAudio();
+
   const language = SUPPORTED_LANGUAGES[customerLanguage];
 
   // Load existing transcripts
@@ -51,8 +55,10 @@ export function VoiceTranslation({
       if (streamRef.current) {
         streamRef.current.getTracks().forEach(track => track.stop());
       }
+      // Stop any playing audio
+      stopAudio();
     };
-  }, []);
+  }, [stopAudio]);
 
   const startRecording = async () => {
     try {
@@ -100,6 +106,7 @@ export function VoiceTranslation({
       const sourceLanguage = currentSpeaker === 'staff' ? 'en' : customerLanguage;
       const targetLanguage = currentSpeaker === 'staff' ? customerLanguage : 'en';
 
+      // Get translation (STT → Translation)
       const translation = await api.translateAudio(
         sessionId,
         audioBlob,
@@ -118,7 +125,7 @@ export function VoiceTranslation({
         return;
       }
 
-      // Add to transcripts (auto-saved to DB by backend)
+      // Immediately show the translation text (no waiting for TTS)
       setTranscripts(prev => [...prev, translation]);
       setState('speaking');
 
@@ -127,31 +134,53 @@ export function VoiceTranslation({
         onTranslation(translation);
       }
 
-      // Play TTS audio if available
-      if (translation.ttsAudio) {
+      // Use streaming TTS for faster audio playback
+      // Audio starts playing as chunks arrive, reducing perceived latency
+      if (translation.translatedText) {
         try {
-          const audioData = `data:audio/mp3;base64,${translation.ttsAudio}`;
-          const audio = new Audio(audioData);
-          audio.volume = 0.8;
-          audio.onended = () => {
-            setState('idle');
-            // Auto-switch speaker for next turn
-            setCurrentSpeaker(prev => prev === 'staff' ? 'customer' : 'staff');
-          };
-          await audio.play();
+          console.log('[VoiceTranslation] Starting streaming TTS...');
+          const startTime = performance.now();
+          
+          // Play streaming audio - this will start playing as soon as first chunks arrive
+          await playStreamingAudio(translation.translatedText, targetLanguage);
+          
+          console.log(`[VoiceTranslation] Streaming TTS completed in ${(performance.now() - startTime).toFixed(0)}ms`);
+          
+          // After audio finishes
+          setState('idle');
+          setCurrentSpeaker(prev => prev === 'staff' ? 'customer' : 'staff');
         } catch (audioErr) {
-          console.error('Failed to play TTS:', audioErr);
-          setTimeout(() => {
-            setState('idle');
-            setCurrentSpeaker(prev => prev === 'staff' ? 'customer' : 'staff');
-          }, 3000);
+          console.error('Failed to play streaming TTS:', audioErr);
+          
+          // Fallback to base64 audio if streaming fails
+          if (translation.ttsAudio) {
+            try {
+              console.log('[VoiceTranslation] Falling back to base64 audio...');
+              const audioData = `data:audio/mp3;base64,${translation.ttsAudio}`;
+              const audio = new Audio(audioData);
+              audio.volume = 0.8;
+              audio.onended = () => {
+                setState('idle');
+                setCurrentSpeaker(prev => prev === 'staff' ? 'customer' : 'staff');
+              };
+              await audio.play();
+            } catch (fallbackErr) {
+              console.error('Fallback audio also failed:', fallbackErr);
+              setState('idle');
+              setCurrentSpeaker(prev => prev === 'staff' ? 'customer' : 'staff');
+            }
+          } else {
+            setTimeout(() => {
+              setState('idle');
+              setCurrentSpeaker(prev => prev === 'staff' ? 'customer' : 'staff');
+            }, 2000);
+          }
         }
       } else {
         setTimeout(() => {
           setState('idle');
-          // Auto-switch speaker for next turn
           setCurrentSpeaker(prev => prev === 'staff' ? 'customer' : 'staff');
-        }, 3000);
+        }, 2000);
       }
     } catch (err) {
       console.error('Translation error:', err);

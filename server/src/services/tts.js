@@ -68,6 +68,101 @@ async function synthesizeSpeech(text, language = 'en') {
 }
 
 /**
+ * Synthesize speech with streaming - returns a readable stream
+ * Audio starts playing on the client as chunks arrive
+ * @param {string} text - The text to synthesize
+ * @param {string} language - The language code
+ * @returns {Promise<ReadableStream>} - Streaming audio response
+ */
+async function synthesizeSpeechStream(text, language = 'en') {
+  if (!openai) {
+    throw new Error('OpenAI TTS not configured');
+  }
+
+  const voice = VOICE_MAP[language] || 'alloy';
+  
+  console.log(`[TTS-Stream] Starting stream: "${text.substring(0, 50)}..." with voice: ${voice}`);
+  const startTime = Date.now();
+
+  try {
+    // OpenAI TTS returns a Response object that can be streamed
+    const response = await openai.audio.speech.create({
+      model: TTS_MODEL,
+      voice: voice,
+      input: text,
+      speed: TTS_SPEED,
+      response_format: 'mp3', // MP3 is best for streaming
+    });
+
+    console.log(`[TTS-Stream] First byte in ${Date.now() - startTime}ms`);
+    
+    // Return the response body as a stream
+    return response.body;
+  } catch (error) {
+    console.error('[TTS-Stream] Error:', error.message);
+    throw error;
+  }
+}
+
+/**
+ * Pipe TTS stream directly to HTTP response
+ * This is the most efficient way to stream audio to the client
+ * @param {string} text - Text to synthesize
+ * @param {string} language - Language code
+ * @param {Response} res - Express response object
+ */
+async function streamSpeechToResponse(text, language, res) {
+  if (!openai) {
+    throw new Error('OpenAI TTS not configured');
+  }
+
+  const voice = VOICE_MAP[language] || 'alloy';
+  
+  console.log(`[TTS-Stream] Streaming to response: "${text.substring(0, 40)}..." (${language})`);
+  const startTime = Date.now();
+
+  try {
+    const response = await openai.audio.speech.create({
+      model: TTS_MODEL,
+      voice: voice,
+      input: text,
+      speed: TTS_SPEED,
+      response_format: 'mp3',
+    });
+
+    // Set headers for streaming audio
+    res.setHeader('Content-Type', 'audio/mpeg');
+    res.setHeader('Transfer-Encoding', 'chunked');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('X-TTS-First-Byte-Ms', Date.now() - startTime);
+
+    // Get the readable stream from the response
+    const stream = response.body;
+    
+    let totalBytes = 0;
+    let firstChunk = true;
+
+    // Pipe chunks to response
+    for await (const chunk of stream) {
+      if (firstChunk) {
+        console.log(`[TTS-Stream] First chunk sent in ${Date.now() - startTime}ms`);
+        firstChunk = false;
+      }
+      totalBytes += chunk.length;
+      res.write(chunk);
+    }
+
+    res.end();
+    console.log(`[TTS-Stream] Complete: ${totalBytes} bytes in ${Date.now() - startTime}ms`);
+    
+    return { success: true, bytes: totalBytes, durationMs: Date.now() - startTime };
+  } catch (error) {
+    console.error('[TTS-Stream] Error:', error.message);
+    throw error;
+  }
+}
+
+/**
  * Check if TTS service is available
  */
 function isServiceAvailable() {
@@ -87,6 +182,8 @@ function getServiceStatus() {
 
 module.exports = {
   synthesizeSpeech,
+  synthesizeSpeechStream,
+  streamSpeechToResponse,
   isServiceAvailable,
   getServiceStatus,
   VOICE_MAP,
