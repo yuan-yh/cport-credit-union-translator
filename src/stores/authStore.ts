@@ -21,10 +21,7 @@ type AuthStore = AuthState & AuthActions;
 // Role hierarchy for permission checking
 const ROLE_HIERARCHY: Record<UserRole, number> = {
   ADMIN: 100,
-  MANAGER: 80,
-  CONSULTOR: 60,
-  TELLER: 40,
-  GREETER: 20,
+  STAFF: 50,
 };
 
 export const useAuthStore = create<AuthStore>()(
@@ -42,6 +39,11 @@ export const useAuthStore = create<AuthStore>()(
         
         try {
           const response = await api.login(credentials);
+          
+          console.log('Login successful:', {
+            username: response.user.username,
+            role: response.user.role,
+          });
           
           set({
             user: response.user,
@@ -66,15 +68,24 @@ export const useAuthStore = create<AuthStore>()(
       logout: async () => {
         try {
           await api.logout();
+        } catch (e) {
+          // Ignore logout API errors
+          console.log('Logout API error (ignored):', e);
         } finally {
-          // Always clear local state, even if API call fails
+          // Always clear local state and localStorage
           api.clearAccessToken();
+          
+          // Clear persisted state
+          localStorage.removeItem('cport-auth');
+          
           set({
             user: null,
             accessToken: null,
             isAuthenticated: false,
             isLoading: false,
           });
+          
+          console.log('Logged out - state cleared');
         }
       },
 

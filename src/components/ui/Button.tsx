@@ -11,7 +11,7 @@ const buttonVariants = cva(
   [
     'inline-flex items-center justify-center gap-2',
     'font-medium transition-all duration-150',
-    'focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-brand-midnight',
+    'focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-cport-navy',
     'disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none',
     'active:scale-[0.98]',
   ],
@@ -24,9 +24,9 @@ const buttonVariants = cva(
           'focus:ring-info-400',
         ],
         secondary: [
-          'bg-brand-steel-blue text-brand-sea-foam border border-brand-harbor',
-          'hover:bg-brand-harbor hover:border-brand-fog',
-          'focus:ring-brand-harbor',
+          'bg-cport-blue/20 text-cport-green-light border border-cport-gray',
+          'hover:bg-cport-gray hover:border-cport-gray',
+          'focus:ring-cport-gray',
         ],
         danger: [
           'bg-danger-600 text-white',
@@ -39,14 +39,14 @@ const buttonVariants = cva(
           'focus:ring-success-400',
         ],
         ghost: [
-          'bg-transparent text-brand-fog',
-          'hover:bg-brand-steel-blue/50 hover:text-brand-sea-foam',
-          'focus:ring-brand-harbor',
+          'bg-transparent text-cport-gray',
+          'hover:bg-cport-blue/20/50 hover:text-cport-green-light',
+          'focus:ring-cport-gray',
         ],
         outline: [
-          'bg-transparent text-brand-sea-foam border border-brand-harbor',
-          'hover:bg-brand-steel-blue/30 hover:border-brand-fog',
-          'focus:ring-brand-harbor',
+          'bg-transparent text-cport-green-light border border-cport-gray',
+          'hover:bg-cport-blue/20/30 hover:border-cport-gray',
+          'focus:ring-cport-gray',
         ],
       },
       size: {

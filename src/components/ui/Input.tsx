@@ -9,8 +9,8 @@ import { cn } from '../../lib/utils';
 const inputVariants = cva(
   // Base styles
   [
-    'w-full bg-brand-steel-blue text-white placeholder:text-brand-fog',
-    'border border-brand-harbor rounded-lg',
+    'w-full bg-cport-blue/20 text-white placeholder:text-cport-gray',
+    'border border-cport-gray rounded-lg',
     'transition-all duration-150',
     'focus:outline-none focus:border-info-400 focus:ring-2 focus:ring-info-400/20',
     'disabled:opacity-50 disabled:cursor-not-allowed',
@@ -70,7 +70,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
         {label && (
           <label
             htmlFor={inputId}
-            className="block text-body-sm font-medium text-brand-fog mb-1.5"
+            className="block text-body-sm font-medium text-cport-gray mb-1.5"
           >
             {label}
           </label>
@@ -78,7 +78,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
 
         <div className="relative">
           {leftIcon && (
-            <div className="absolute left-3 top-1/2 -translate-y-1/2 text-brand-fog">
+            <div className="absolute left-3 top-1/2 -translate-y-1/2 text-cport-gray">
               {leftIcon}
             </div>
           )}
@@ -96,7 +96,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
           />
 
           {rightIcon && (
-            <div className="absolute right-3 top-1/2 -translate-y-1/2 text-brand-fog">
+            <div className="absolute right-3 top-1/2 -translate-y-1/2 text-cport-gray">
               {rightIcon}
             </div>
           )}
@@ -106,7 +106,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
           <p
             className={cn(
               'mt-1.5 text-caption',
-              error ? 'text-danger-400' : 'text-brand-fog'
+              error ? 'text-danger-400' : 'text-cport-gray'
             )}
           >
             {error || hint}
@@ -140,7 +140,7 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
         {label && (
           <label
             htmlFor={inputId}
-            className="block text-body-sm font-medium text-brand-fog mb-1.5"
+            className="block text-body-sm font-medium text-cport-gray mb-1.5"
           >
             {label}
           </label>
@@ -150,13 +150,13 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
           ref={ref}
           id={inputId}
           className={cn(
-            'w-full bg-brand-steel-blue text-white placeholder:text-brand-fog',
+            'w-full bg-cport-blue/20 text-white placeholder:text-cport-gray',
             'border rounded-lg px-4 py-3 min-h-[100px] resize-y',
             'transition-all duration-150',
             'focus:outline-none focus:ring-2',
             hasError
               ? 'border-danger-400 focus:border-danger-400 focus:ring-danger-400/20'
-              : 'border-brand-harbor focus:border-info-400 focus:ring-info-400/20',
+              : 'border-cport-gray focus:border-info-400 focus:ring-info-400/20',
             'disabled:opacity-50 disabled:cursor-not-allowed',
             className
           )}
@@ -167,7 +167,7 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
           <p
             className={cn(
               'mt-1.5 text-caption',
-              error ? 'text-danger-400' : 'text-brand-fog'
+              error ? 'text-danger-400' : 'text-cport-gray'
             )}
           >
             {error || hint}

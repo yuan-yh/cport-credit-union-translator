@@ -1,90 +1,121 @@
-import { useState, useCallback } from 'react';
-import { X, Volume2, Settings } from 'lucide-react';
+import { useState, useCallback, useEffect } from 'react';
+import { X, Volume2 } from 'lucide-react';
 import { cn } from '../../lib/utils';
-import { Button, Card } from '../ui';
-import { VoiceRecorder } from './VoiceRecorder';
+import { Button } from '../ui';
+import { VoiceRecorderVAD } from './VoiceRecorderVAD';
 import { ChatHistory } from './ChatHistory';
-import { CompactLanguageSelector } from './LanguageSelector';
 import { useSessionStore } from '../../stores/sessionStore';
-import { SUPPORTED_LANGUAGES, type LanguageCode } from '../../types';
+import { SUPPORTED_LANGUAGES, type LanguageCode, type Translation } from '../../types';
+import { api } from '../../lib/api';
 
 // =============================================================================
-// TRANSLATION PANEL
+// TRANSLATION PANEL - SIMPLIFIED
 // =============================================================================
 
 interface TranslationPanelProps {
-  sessionId?: string;
+  sessionId: string;
   customerLanguage: LanguageCode;
-  onClose: () => void;
-  onLanguageChange?: (language: LanguageCode) => void;
+  onComplete?: () => void;
   className?: string;
 }
 
 export function TranslationPanel({
+  sessionId,
   customerLanguage,
-  onClose,
-  onLanguageChange,
+  onComplete,
   className,
 }: TranslationPanelProps): React.ReactElement {
-  const { translations, requestTranslation, isTranslating, translationError } = useSessionStore();
+  const { translations, addTranslation, isTranslating, setTranslating, translationError, setTranslationError } = useSessionStore();
   const [currentSpeaker, setCurrentSpeaker] = useState<'customer' | 'staff'>('staff');
   const [isMuted, setIsMuted] = useState(false);
 
   const language = SUPPORTED_LANGUAGES[customerLanguage];
 
-  const handleRecordingComplete = useCallback(async (_audioBlob: Blob, _duration: number) => {
-    // In production, this would send audio to transcription API first
-    // For now, we'll simulate with mock text
-    const mockTexts = {
-      staff: [
-        'Hello, how can I help you today?',
-        'I can help you with that.',
-        'Let me check your account.',
-        'Is there anything else you need?',
-      ],
-      customer: [
-        'I need to open a savings account',
-        'I would like to make a deposit',
-        'Can you check my balance?',
-        'Thank you for your help',
-      ],
+  // Load existing translations for this session
+  useEffect(() => {
+    const loadTranslations = async () => {
+      try {
+        const response = await api.getSessionTranslations(sessionId);
+        response.data.forEach((t: Translation) => {
+          addTranslation(t);
+        });
+      } catch (error) {
+        console.error('Failed to load translations:', error);
+      }
     };
 
-    const texts = mockTexts[currentSpeaker];
-    const randomText = texts[Math.floor(Math.random() * texts.length)];
+    if (sessionId) {
+      loadTranslations();
+    }
+  }, [sessionId, addTranslation]);
+
+  const handleRecordingComplete = useCallback(async (audioBlob: Blob) => {
+    if (!sessionId) {
+      setTranslationError('No active session');
+      return;
+    }
+
+    setTranslating(true);
+    setTranslationError(null);
 
     try {
-      await requestTranslation({
-        text: randomText,
-        sourceLanguage: currentSpeaker === 'staff' ? 'en' : customerLanguage,
-        targetLanguage: currentSpeaker === 'staff' ? customerLanguage : 'en',
-        speakerType: currentSpeaker,
-      });
+      const sourceLanguage = currentSpeaker === 'staff' ? 'en' : customerLanguage;
+      const targetLanguage = currentSpeaker === 'staff' ? customerLanguage : 'en';
+      const speakerType = currentSpeaker;
+
+      const translation = await api.translateAudio(
+        sessionId,
+        audioBlob,
+        sourceLanguage,
+        targetLanguage,
+        speakerType,
+        'Banking conversation at cPort Credit Union'
+      );
+
+      if (translation.noSpeechDetected) {
+        console.log('No speech detected');
+        return;
+      }
+
+      addTranslation(translation);
+
+      // Play TTS audio if available
+      if (!isMuted && translation.ttsAudio) {
+        try {
+          const audioData = `data:audio/mp3;base64,${translation.ttsAudio}`;
+          const audio = new Audio(audioData);
+          audio.volume = 0.8;
+          await audio.play();
+        } catch (audioError) {
+          console.error('Failed to play TTS audio:', audioError);
+        }
+      }
     } catch (error) {
       console.error('Translation error:', error);
+      setTranslationError(
+        error instanceof Error ? error.message : 'Translation failed'
+      );
+    } finally {
+      setTranslating(false);
     }
-  }, [currentSpeaker, customerLanguage, requestTranslation]);
+  }, [sessionId, currentSpeaker, customerLanguage, isMuted, setTranslating, setTranslationError, addTranslation]);
 
   const handleError = useCallback((error: string) => {
-    console.error('Recording error:', error);
-  }, []);
+    setTranslationError(error);
+  }, [setTranslationError]);
 
   return (
-    <Card
-      variant="elevated"
-      padding="none"
+    <div
       className={cn(
-        'fixed inset-4 lg:inset-auto lg:bottom-6 lg:right-6',
-        'lg:w-[480px] lg:h-[640px]',
-        'flex flex-col overflow-hidden z-50',
-        'animate-slide-up',
+        'flex flex-col overflow-hidden rounded-2xl',
+        'border-2 border-cport-teal/30 shadow-2xl',
+        'bg-cport-navy h-[600px]',
         className
       )}
     >
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-brand-harbor/30">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-cport-slate bg-cport-slate/50">
         <div className="flex items-center gap-3">
-          {/* Language indicator */}
           <div
             className="w-10 h-10 rounded-xl flex items-center justify-center"
             style={{ backgroundColor: `${language.color}20` }}
@@ -92,10 +123,10 @@ export function TranslationPanel({
             <span className="text-xl">{language.flag}</span>
           </div>
           <div>
-            <h3 className="text-body font-medium text-white">
+            <h3 className="text-base font-medium text-white">
               Live Translation
             </h3>
-            <p className="text-caption text-brand-fog">
+            <p className="text-sm text-gray-400">
               {language.name} ↔ English
             </p>
           </div>
@@ -104,27 +135,16 @@ export function TranslationPanel({
         <div className="flex items-center gap-2">
           <Button
             variant="ghost"
-            size="icon-sm"
+            size="sm"
             onClick={() => setIsMuted(!isMuted)}
-            aria-label={isMuted ? 'Unmute' : 'Mute'}
           >
             <Volume2 className={cn('w-4 h-4', isMuted && 'opacity-50')} />
           </Button>
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            aria-label="Settings"
-          >
-            <Settings className="w-4 h-4" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            onClick={onClose}
-            aria-label="Close"
-          >
-            <X className="w-4 h-4" />
-          </Button>
+          {onComplete && (
+            <Button variant="ghost" size="sm" onClick={onComplete}>
+              <X className="w-4 h-4" />
+            </Button>
+          )}
         </div>
       </div>
 
@@ -137,13 +157,13 @@ export function TranslationPanel({
 
       {/* Error display */}
       {translationError && (
-        <div className="mx-4 mb-2 p-3 rounded-lg bg-danger-600/10 border border-danger-600/20">
-          <p className="text-body-sm text-danger-400">{translationError}</p>
+        <div className="mx-4 mb-2 p-3 rounded-lg bg-red-500/10 border border-red-500/20">
+          <p className="text-sm text-red-400">{translationError}</p>
         </div>
       )}
 
       {/* Recording Controls */}
-      <div className="border-t border-brand-harbor/30 p-4 space-y-4">
+      <div className="border-t border-cport-slate p-4 space-y-4 bg-cport-slate/50">
         {/* Speaker toggle */}
         <div className="flex items-center justify-center gap-2">
           <SpeakerToggle
@@ -151,7 +171,7 @@ export function TranslationPanel({
             isActive={currentSpeaker === 'staff'}
             onClick={() => setCurrentSpeaker('staff')}
           />
-          <div className="w-px h-6 bg-brand-harbor/50" />
+          <div className="w-px h-6 bg-gray-600" />
           <SpeakerToggle
             speaker="customer"
             isActive={currentSpeaker === 'customer'}
@@ -160,29 +180,15 @@ export function TranslationPanel({
           />
         </div>
 
-        {/* Voice recorder */}
-        <VoiceRecorder
+        {/* Voice recorder with VAD */}
+        <VoiceRecorderVAD
           onRecordingComplete={handleRecordingComplete}
           onError={handleError}
           isProcessing={isTranslating}
           size="md"
         />
-
-        {/* Language quick-switch */}
-        {onLanguageChange && (
-          <div className="pt-2 border-t border-brand-harbor/30">
-            <p className="text-caption text-brand-fog mb-2 text-center">
-              Change customer language:
-            </p>
-            <CompactLanguageSelector
-              selectedLanguage={customerLanguage}
-              onLanguageChange={onLanguageChange}
-              className="justify-center"
-            />
-          </div>
-        )}
       </div>
-    </Card>
+    </div>
   );
 }
 
@@ -211,19 +217,19 @@ function SpeakerToggle({
         'px-4 py-2 rounded-full transition-all duration-150',
         'flex items-center gap-2',
         isActive
-          ? 'bg-brand-steel-blue border-2 border-info-400'
-          : 'bg-brand-deep-ocean border-2 border-brand-harbor/30 opacity-60 hover:opacity-100'
+          ? 'bg-cport-teal border-2 border-cport-teal-light'
+          : 'bg-cport-navy border-2 border-gray-600 opacity-60 hover:opacity-100'
       )}
     >
       {speaker === 'customer' && language ? (
         <>
           <span className="text-lg">{language.flag}</span>
-          <span className="text-body-sm font-medium text-white">Customer</span>
+          <span className="text-sm font-medium text-white">Customer</span>
         </>
       ) : (
         <>
           <span className="text-lg">🇺🇸</span>
-          <span className="text-body-sm font-medium text-white">Staff</span>
+          <span className="text-sm font-medium text-white">Staff</span>
         </>
       )}
     </button>

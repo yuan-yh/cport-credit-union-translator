@@ -1,39 +1,34 @@
-# Use Node.js 18 Alpine for smaller image size
+# =============================================================================
+# CPORT TRANSLATION TOOL - PRODUCTION DOCKERFILE
+# =============================================================================
+
 FROM node:20-alpine
 
 # Set working directory
 WORKDIR /app
 
-# Install system dependencies for audio processing
-RUN apk add --no-cache \
-    python3 \
-    make \
-    g++ \
-    ffmpeg
-
 # Copy package files
 COPY package*.json ./
 
-# Install dependencies
-RUN npm install --only=production
+# Install production dependencies only
+RUN npm ci --omit=dev
 
-# Copy server code
-COPY . ./
+# Copy source code
+COPY src/ ./src/
 
-# Create non-root user for security
-RUN addgroup -g 1001 -S nodejs && \
-    adduser -S nodejs -u 1001
+# Create data directory for SQLite
+RUN mkdir -p data
 
-# Change ownership of the app directory
-RUN chown -R nodejs:nodejs /app
-USER nodejs
+# Set environment
+ENV NODE_ENV=production
+ENV PORT=8080
 
 # Expose port
-EXPOSE 3001
+EXPOSE 8080
 
 # Health check
-HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-    CMD node -e "require('http').get('http://localhost:3001/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) })"
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+  CMD wget --no-verbose --tries=1 --spider http://localhost:8080/api/health || exit 1
 
-# Start the server
-CMD ["npm", "start"]
+# Start server
+CMD ["node", "src/index.js"]

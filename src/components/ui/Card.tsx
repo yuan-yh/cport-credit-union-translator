@@ -15,18 +15,18 @@ const cardVariants = cva(
     variants: {
       variant: {
         default: [
-          'bg-brand-deep-ocean border-brand-harbor/30',
+          'bg-cport-slate border-cport-gray/30',
         ],
         elevated: [
-          'bg-brand-steel-blue border-brand-harbor/50',
-          'shadow-lg',
+          'bg-cport-slate border-cport-gray/30',
+          'shadow-xl',
         ],
         outline: [
-          'bg-transparent border-brand-harbor',
+          'bg-transparent border-cport-gray',
         ],
         interactive: [
-          'bg-brand-deep-ocean border-brand-harbor/30',
-          'hover:bg-brand-steel-blue/50 hover:border-brand-harbor',
+          'bg-cport-slate border-cport-gray/30',
+          'hover:bg-cport-blue/20 hover:border-cport-gray',
           'cursor-pointer',
         ],
       },
@@ -87,7 +87,7 @@ export function CardHeader({
   return (
     <div
       className={cn(
-        'flex items-start justify-between gap-4 pb-4 border-b border-brand-harbor/30',
+        'flex items-start justify-between gap-4 pb-4 border-b border-cport-gray/30',
         className
       )}
       {...props}
@@ -97,7 +97,7 @@ export function CardHeader({
           <h3 className="text-h3 font-semibold text-white truncate">{title}</h3>
         )}
         {subtitle && (
-          <p className="text-body-sm text-brand-fog mt-0.5">{subtitle}</p>
+          <p className="text-body-sm text-cport-gray mt-0.5">{subtitle}</p>
         )}
         {children}
       </div>
@@ -129,7 +129,7 @@ export function CardFooter({
   return (
     <div
       className={cn(
-        'pt-4 border-t border-brand-harbor/30 flex items-center gap-3',
+        'pt-4 border-t border-cport-gray/30 flex items-center gap-3',
         className
       )}
       {...props}

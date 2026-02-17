@@ -23,7 +23,7 @@ export function LanguageSelector({
   );
 
   return (
-    <div className={cn('grid grid-cols-5 gap-3', className)}>
+    <div className={cn('grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 gap-3', className)}>
       {languages.map((language) => (
         <LanguageCard
           key={language.code}
@@ -62,7 +62,7 @@ function LanguageCard({
         'hover:-translate-y-1',
         isSelected
           ? 'border-current bg-current/10'
-          : 'border-brand-harbor/30 bg-brand-steel-blue/50 hover:bg-brand-steel-blue hover:border-brand-harbor'
+          : 'border-cport-gray/30 bg-cport-blue/20/50 hover:bg-cport-blue/20 hover:border-cport-gray'
       )}
       style={{
         color: isSelected ? language.color : undefined,
@@ -76,7 +76,7 @@ function LanguageCard({
       <span 
         className={cn(
           'text-body-sm font-medium text-center',
-          isSelected ? 'text-white' : 'text-brand-sea-foam'
+          isSelected ? 'text-white' : 'text-cport-green-light'
         )}
         style={{ direction: language.rtl ? 'rtl' : 'ltr' }}
       >
@@ -84,7 +84,7 @@ function LanguageCard({
       </span>
       
       {/* English name */}
-      <span className="text-caption text-brand-fog mt-0.5">
+      <span className="text-caption text-cport-gray mt-0.5">
         {language.name}
       </span>
 
@@ -135,7 +135,7 @@ export function CompactLanguageSelector({
               'border-2 transition-all duration-150',
               isSelected
                 ? 'border-current scale-110'
-                : 'border-transparent hover:border-brand-harbor opacity-60 hover:opacity-100'
+                : 'border-transparent hover:border-cport-gray opacity-60 hover:opacity-100'
             )}
             style={{ color: isSelected ? language.color : undefined }}
             title={language.name}

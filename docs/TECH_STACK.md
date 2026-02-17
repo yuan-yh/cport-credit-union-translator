@@ -22,7 +22,7 @@
 | **Radix UI** | Latest | Accessible primitives |
 | **Socket.io Client** | 4.x | Real-time communication |
 
-## Backend Stack
+## Backend Stack  
 
 | Technology | Version | Purpose |
 |------------|---------|---------|

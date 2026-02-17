@@ -6,9 +6,10 @@ import { useAuthStore } from '../../stores/authStore';
 import { Button } from './Button';
 import { Avatar } from './Avatar';
 import { StatusIndicator } from './Badge';
+import { Logo } from '../brand/Logo';
 
 // =============================================================================
-// HEADER COMPONENT
+// HEADER COMPONENT - cPort Branding
 // =============================================================================
 
 interface HeaderProps {
@@ -34,7 +35,7 @@ export function Header({
     <header
       className={cn(
         'h-16 px-6 flex items-center justify-between',
-        'bg-brand-deep-ocean border-b border-brand-harbor/30',
+        'bg-cport-navy border-b border-cport-slate',
         'sticky top-0 z-40',
         className
       )}
@@ -45,32 +46,17 @@ export function Header({
           to="/" 
           className="flex items-center gap-2 hover:opacity-80 transition-opacity"
         >
-          <div className="w-8 h-8 rounded-lg bg-info-600 flex items-center justify-center">
-            <svg
-              viewBox="0 0 24 24"
-              className="w-5 h-5 text-white"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-            >
-              <path d="M12 2L2 7l10 5 10-5-10-5z" />
-              <path d="M2 17l10 5 10-5" />
-              <path d="M2 12l10 5 10-5" />
-            </svg>
-          </div>
-          <span className="text-body font-semibold text-white hidden sm:block">
-            cPort
-          </span>
+          <Logo size="sm" variant="full" />
         </Link>
 
         {/* Divider */}
         {title && (
           <>
-            <div className="w-px h-6 bg-brand-harbor/50 hidden sm:block" />
+            <div className="w-px h-6 bg-cport-slate hidden sm:block" />
             <div className="hidden sm:block">
-              <p className="text-body-sm font-medium text-brand-fog">{title}</p>
+              <p className="text-body-sm font-medium text-cport-white">{title}</p>
               {subtitle && (
-                <p className="text-caption text-brand-harbor">{subtitle}</p>
+                <p className="text-caption text-cport-gray">{subtitle}</p>
               )}
             </div>
           </>
@@ -87,19 +73,19 @@ export function Header({
       {/* Right section - User info */}
       <div className="flex items-center gap-3">
         {/* Connection status */}
-        <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full bg-brand-steel-blue/50">
+        <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full bg-cport-slate/50">
           <StatusIndicator status="online" />
-          <span className="text-caption text-brand-fog">Connected</span>
+          <span className="text-caption text-cport-gray">Connected</span>
         </div>
 
         {/* User menu */}
         {user && (
           <div className="flex items-center gap-3">
             <div className="hidden md:block text-right">
-              <p className="text-body-sm font-medium text-white">
+              <p className="text-body-sm font-medium text-cport-white">
                 {user.firstName} {user.lastName}
               </p>
-              <p className="text-caption text-brand-fog capitalize">
+              <p className="text-caption text-cport-gray capitalize">
                 {user.role.toLowerCase()}
               </p>
             </div>

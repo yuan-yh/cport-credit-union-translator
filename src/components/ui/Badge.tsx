@@ -16,7 +16,7 @@ const badgeVariants = cva(
     variants: {
       variant: {
         default: [
-          'bg-brand-harbor/20 text-brand-fog border-brand-harbor/30',
+          'bg-cport-gray/20 text-cport-gray border-cport-gray/30',
         ],
         success: [
           'bg-success-400/15 text-success-400 border-success-400/30',
@@ -106,7 +106,7 @@ interface StatusIndicatorProps {
 
 const statusConfig = {
   online: { color: 'bg-success-400', label: 'Online' },
-  offline: { color: 'bg-brand-fog', label: 'Offline' },
+  offline: { color: 'bg-cport-gray', label: 'Offline' },
   busy: { color: 'bg-danger-400', label: 'Busy' },
   away: { color: 'bg-warning-400', label: 'Away' },
 };
@@ -122,7 +122,7 @@ export function StatusIndicator({
     <span className={cn('inline-flex items-center gap-1.5', className)}>
       <span className={cn('w-2 h-2 rounded-full', config.color)} />
       {showLabel && (
-        <span className="text-body-sm text-brand-fog">{config.label}</span>
+        <span className="text-body-sm text-cport-gray">{config.label}</span>
       )}
     </span>
   );

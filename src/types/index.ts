@@ -1,72 +1,32 @@
 // =============================================================================
-// CPORT CREDIT UNION TRANSLATION TOOL - TYPE DEFINITIONS
+// CPORT CREDIT UNION TRANSLATION TOOL - SIMPLIFIED TYPE DEFINITIONS
 // =============================================================================
 
 // -----------------------------------------------------------------------------
-// Constants (using const objects instead of enums for erasableSyntaxOnly)
+// User Role (Admin only)
 // -----------------------------------------------------------------------------
 
 export const UserRole = {
-  GREETER: 'GREETER',
-  TELLER: 'TELLER',
-  CONSULTOR: 'CONSULTOR',
-  MANAGER: 'MANAGER',
+  STAFF: 'STAFF',
   ADMIN: 'ADMIN',
 } as const;
 export type UserRole = (typeof UserRole)[keyof typeof UserRole];
 
+// -----------------------------------------------------------------------------
+// Session Status
+// -----------------------------------------------------------------------------
+
 export const SessionStatus = {
   ACTIVE: 'ACTIVE',
-  WAITING: 'WAITING',
-  IN_SERVICE: 'IN_SERVICE',
   COMPLETED: 'COMPLETED',
-  ABANDONED: 'ABANDONED',
 } as const;
 export type SessionStatus = (typeof SessionStatus)[keyof typeof SessionStatus];
-
-export const ServiceType = {
-  SIMPLE_TRANSACTION: 'SIMPLE_TRANSACTION',
-  COMPLEX_SERVICE: 'COMPLEX_SERVICE',
-  URGENT: 'URGENT',
-} as const;
-export type ServiceType = (typeof ServiceType)[keyof typeof ServiceType];
-
-export const QueueType = {
-  TELLER: 'TELLER',
-  CONSULTOR: 'CONSULTOR',
-} as const;
-export type QueueType = (typeof QueueType)[keyof typeof QueueType];
-
-export const QueueStatus = {
-  WAITING: 'WAITING',
-  CALLED: 'CALLED',
-  IN_SERVICE: 'IN_SERVICE',
-  COMPLETED: 'COMPLETED',
-  NO_SHOW: 'NO_SHOW',
-} as const;
-export type QueueStatus = (typeof QueueStatus)[keyof typeof QueueStatus];
-
-export const Priority = {
-  LOW: 'LOW',
-  STANDARD: 'STANDARD',
-  HIGH: 'HIGH',
-  URGENT: 'URGENT',
-} as const;
-export type Priority = (typeof Priority)[keyof typeof Priority];
-
-export const EmotionState = {
-  CALM: 'CALM',
-  NEUTRAL: 'NEUTRAL',
-  ANXIOUS: 'ANXIOUS',
-  DISTRESSED: 'DISTRESSED',
-} as const;
-export type EmotionState = (typeof EmotionState)[keyof typeof EmotionState];
 
 // -----------------------------------------------------------------------------
 // Language Types
 // -----------------------------------------------------------------------------
 
-export type LanguageCode = 'en' | 'pt' | 'fr' | 'so' | 'ar' | 'es';
+export type LanguageCode = 'en' | 'pt' | 'fr' | 'so' | 'ar' | 'es' | 'ln';
 
 export interface Language {
   code: LanguageCode;
@@ -84,6 +44,7 @@ export const SUPPORTED_LANGUAGES: Record<LanguageCode, Language> = {
   so: { code: 'so', name: 'Somali', nativeName: 'Soomaali', flag: '🇸🇴', color: '#F59E0B' },
   ar: { code: 'ar', name: 'Arabic', nativeName: 'العربية', flag: '🇸🇦', color: '#8B5CF6', rtl: true },
   es: { code: 'es', name: 'Spanish', nativeName: 'Español', flag: '🇪🇸', color: '#EF4444' },
+  ln: { code: 'ln', name: 'Lingala', nativeName: 'Lingála', flag: '🇨🇩', color: '#06B6D4' },
 };
 
 // -----------------------------------------------------------------------------
@@ -97,10 +58,8 @@ export interface User {
   firstName: string;
   lastName: string;
   role: UserRole;
-  branchId: string;
   isActive: boolean;
   createdAt: string;
-  updatedAt: string;
 }
 
 export interface AuthState {
@@ -121,49 +80,28 @@ export interface AuthResponse {
   refreshToken: string;
 }
 
-export interface JWTPayload {
-  sub: string;
-  email: string;
-  role: UserRole;
-  branchId: string;
-  firstName: string;
-  iat: number;
-  exp: number;
-}
-
 // -----------------------------------------------------------------------------
 // Session Types
 // -----------------------------------------------------------------------------
 
 export interface Session {
   id: string;
+  customerLanguage: LanguageCode;
   customerName: string | null;
-  customerPhone: string | null;
-  preferredLanguage: LanguageCode;
+  notes: string | null;
   status: SessionStatus;
-  serviceType: ServiceType | null;
-  priority: Priority;
-  emotionState: EmotionState | null;
-  branchId: string;
-  greeterId: string | null;
-  assignedBankerId: string | null;
+  staffId: string;
+  staffName: string | null;
+  translationCount: number;
   createdAt: string;
-  updatedAt: string;
   completedAt: string | null;
 }
 
-export interface SessionWithDetails extends Session {
-  greeter?: Pick<User, 'id' | 'firstName' | 'lastName'>;
-  assignedBanker?: Pick<User, 'id' | 'firstName' | 'lastName'>;
-  translations: Translation[];
-  queueItem?: QueueItem;
-}
+// SessionWithTranslations moved to Analytics section below
 
 export interface CreateSessionInput {
+  customerLanguage: LanguageCode;
   customerName?: string;
-  customerPhone?: string;
-  preferredLanguage: LanguageCode;
-  serviceType?: ServiceType;
   notes?: string;
 }
 
@@ -178,89 +116,29 @@ export interface Translation {
   translatedText: string;
   sourceLanguage: LanguageCode;
   targetLanguage: LanguageCode;
-  confidence: number;
-  context: string | null;
   speakerType: 'customer' | 'staff';
+  confidence: number;
   processingTimeMs: number;
+  audioUrl: string | null;
+  staffId: string;
+  staffName: string | null;
+  customerLanguage?: LanguageCode;
+  customerName?: string;
   createdAt: string;
-  createdById: string;
+  // TTS audio (base64 MP3)
+  ttsAudio?: string;
+  ttsAvailable?: boolean;
+  // No speech detected
+  noSpeechDetected?: boolean;
+  message?: string;
 }
 
 export interface TranslationRequest {
   sessionId: string;
-  text: string;
   sourceLanguage: LanguageCode;
   targetLanguage: LanguageCode;
   speakerType: 'customer' | 'staff';
   context?: string;
-}
-
-export interface TranslationResponse {
-  translation: Translation;
-  alternatives?: string[];
-}
-
-// -----------------------------------------------------------------------------
-// Queue Types
-// -----------------------------------------------------------------------------
-
-export interface QueueItem {
-  id: string;
-  sessionId: string;
-  queueType: QueueType;
-  position: number;
-  estimatedWaitMinutes: number;
-  priority: Priority;
-  status: QueueStatus;
-  assignedBankerId: string | null;
-  createdAt: string;
-  updatedAt: string;
-  calledAt: string | null;
-  completedAt: string | null;
-}
-
-export interface QueueItemWithSession extends QueueItem {
-  session: Pick<Session, 
-    'id' | 'customerName' | 'preferredLanguage' | 'serviceType' | 'emotionState'
-  >;
-  assignedBanker?: Pick<User, 'id' | 'firstName' | 'lastName'>;
-}
-
-export interface QueueStats {
-  tellerQueue: {
-    count: number;
-    estimatedWait: number;
-  };
-  consultorQueue: {
-    count: number;
-    estimatedWait: number;
-  };
-}
-
-// -----------------------------------------------------------------------------
-// Chat History Types
-// -----------------------------------------------------------------------------
-
-export interface ChatMessage {
-  id: string;
-  sessionId: string;
-  translationId: string | null;
-  speakerType: 'customer' | 'staff' | 'system';
-  originalText: string;
-  translatedText: string | null;
-  sourceLanguage: LanguageCode;
-  targetLanguage: LanguageCode | null;
-  confidence: number | null;
-  timestamp: string;
-}
-
-export interface ChatHistory {
-  sessionId: string;
-  messages: ChatMessage[];
-  customerLanguage: LanguageCode;
-  staffLanguage: LanguageCode;
-  createdAt: string;
-  updatedAt: string;
 }
 
 // -----------------------------------------------------------------------------
@@ -277,18 +155,6 @@ export interface ApiError {
   success: false;
   error: string;
   code: string;
-  details?: Record<string, string>;
-}
-
-export interface PaginatedResponse<T> {
-  success: boolean;
-  data: T[];
-  pagination: {
-    page: number;
-    limit: number;
-    total: number;
-    totalPages: number;
-  };
 }
 
 // -----------------------------------------------------------------------------
@@ -296,32 +162,15 @@ export interface PaginatedResponse<T> {
 // -----------------------------------------------------------------------------
 
 export interface SocketEvents {
-  // Client -> Server
   'session:join': (sessionId: string) => void;
   'session:leave': (sessionId: string) => void;
-  'translation:request': (request: TranslationRequest) => void;
-  'queue:update': (queueItemId: string, status: QueueStatus) => void;
-  
-  // Server -> Client
-  'session:updated': (session: SessionWithDetails) => void;
   'translation:result': (translation: Translation) => void;
   'translation:error': (error: { sessionId: string; message: string }) => void;
-  'queue:changed': (stats: QueueStats) => void;
-  'queue:item-updated': (item: QueueItemWithSession) => void;
-  'notification': (notification: { type: string; message: string }) => void;
 }
 
 // -----------------------------------------------------------------------------
 // UI State Types
 // -----------------------------------------------------------------------------
-
-export type UIMode = 'standard' | 'focus';
-
-export interface UIPreferences {
-  mode: UIMode;
-  soundEnabled: boolean;
-  autoPlayTranslations: boolean;
-}
 
 export interface RecordingState {
   isRecording: boolean;
@@ -331,22 +180,79 @@ export interface RecordingState {
 }
 
 // -----------------------------------------------------------------------------
-// Form Types
+// Analytics Types
 // -----------------------------------------------------------------------------
 
-export interface CustomerFormData {
-  name: string;
-  phone: string;
-  serviceType: ServiceType;
-  notes: string;
+export interface AnalyticsTotals {
+  totalSessions: number;
+  completedSessions: number;
+  activeSessions: number;
+  totalTranslations: number;
+  activeStaff: number;
+  avgProcessingTime: number;
 }
 
-// -----------------------------------------------------------------------------
-// Utility Types
-// -----------------------------------------------------------------------------
+export interface LanguageStat {
+  language: string;
+  count: number;
+}
 
-export type WithRequired<T, K extends keyof T> = T & { [P in K]-?: T[P] };
+export interface DailyStat {
+  date: string;
+  translations: number;
+  sessions: number;
+}
 
-export type DeepPartial<T> = {
-  [P in keyof T]?: T[P] extends object ? DeepPartial<T[P]> : T[P];
-};
+export interface StaffStat {
+  id: string;
+  name: string;
+  translations: number;
+  sessions: number;
+}
+
+export interface RecentSession {
+  id: string;
+  customerLanguage: string;
+  customerName: string | null;
+  status: string;
+  staffName: string;
+  translationCount: number;
+  audioCount: number;
+  createdAt: string;
+  completedAt: string | null;
+}
+
+export interface SpeakerStat {
+  speakerType: string;
+  count: number;
+}
+
+export interface AudioStats {
+  total: number;
+  withAudio: number;
+  withoutAudio: number;
+  uploadRate: number;
+}
+
+export interface AnalyticsData {
+  totals: AnalyticsTotals;
+  languageStats: LanguageStat[];
+  dailyStats: DailyStat[];
+  staffStats: StaffStat[];
+  recentSessions: RecentSession[];
+  speakerStats: SpeakerStat[];
+  audioStats: AudioStats;
+}
+
+export interface SessionWithTranslations {
+  id: string;
+  customerLanguage: string;
+  customerName: string | null;
+  notes: string | null;
+  status: string;
+  staffId: string;
+  staffName: string;
+  createdAt: string;
+  completedAt: string | null;
+  translations: Translation[];
+}

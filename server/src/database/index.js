@@ -1,44 +1,195 @@
 // =============================================================================
-// DATABASE MODULE
-// SQLite with better-sqlite3 for synchronous, high-performance operations
+// DATABASE MODULE - Supports SQLite (local) and PostgreSQL (Cloud SQL)
 // =============================================================================
 
-const Database = require('better-sqlite3');
 const path = require('path');
 const fs = require('fs');
 const bcrypt = require('bcryptjs');
 const { v4: uuidv4 } = require('uuid');
 
-// Database file path
-const DB_PATH = process.env.DB_PATH || path.join(__dirname, '../../data/cport.db');
+// Determine which database to use
+let USE_POSTGRES = !!process.env.DATABASE_URL || !!process.env.DB_HOST;
 
-// Ensure data directory exists
-const dataDir = path.dirname(DB_PATH);
-if (!fs.existsSync(dataDir)) {
-  fs.mkdirSync(dataDir, { recursive: true });
+let db;
+let isPostgres = false;
+
+// =============================================================================
+// DATABASE CONNECTION
+// =============================================================================
+
+if (USE_POSTGRES) {
+  // PostgreSQL connection - require pg only when needed
+  try {
+    const { Pool } = require('pg');
+    
+    const poolConfig = process.env.DATABASE_URL 
+      ? { connectionString: process.env.DATABASE_URL }
+      : {
+          host: process.env.DB_HOST || '/cloudsql/' + process.env.CLOUD_SQL_CONNECTION_NAME,
+          user: process.env.DB_USER || 'postgres',
+          password: process.env.DB_PASSWORD,
+          database: process.env.DB_NAME || 'cport',
+          port: process.env.DB_PORT || 5432,
+        };
+    
+    db = new Pool(poolConfig);
+    isPostgres = true;
+    console.log('✓ PostgreSQL connection pool initialized');
+  } catch (err) {
+    console.error('Failed to initialize PostgreSQL:', err.message);
+    console.log('Falling back to SQLite...');
+    USE_POSTGRES = false;
+  }
 }
 
-// Initialize database connection
-const db = new Database(DB_PATH, { verbose: process.env.NODE_ENV === 'development' ? console.log : null });
-
-// Enable foreign keys and WAL mode for better performance
-db.pragma('foreign_keys = ON');
-db.pragma('journal_mode = WAL');
-
-// =============================================================================
-// SCHEMA INITIALIZATION - Run immediately to ensure tables exist
-// =============================================================================
-
-function initializeSchema() {
-  const schemaPath = path.join(__dirname, 'schema.sql');
-  const schema = fs.readFileSync(schemaPath, 'utf8');
+if (!USE_POSTGRES || !db) {
+  // SQLite connection (local development or fallback)
+  const Database = require('better-sqlite3');
+  const DB_PATH = process.env.DB_PATH || path.join(__dirname, '../../data/cport.db');
   
-  db.exec(schema);
-  console.log('✓ Database schema initialized');
+  // Ensure data directory exists
+  const dataDir = path.dirname(DB_PATH);
+  if (!fs.existsSync(dataDir)) {
+    fs.mkdirSync(dataDir, { recursive: true });
+  }
+  
+  db = new Database(DB_PATH, { verbose: process.env.NODE_ENV === 'development' ? console.log : null });
+  db.pragma('foreign_keys = ON');
+  db.pragma('journal_mode = WAL');
+  isPostgres = false;
+  console.log('✓ SQLite database connection initialized');
 }
 
-// Initialize schema immediately on module load
-initializeSchema();
+// =============================================================================
+// QUERY HELPERS - Abstract differences between SQLite and PostgreSQL
+// =============================================================================
+
+/**
+ * Execute a query and return all rows
+ */
+async function query(sql, params = []) {
+  if (isPostgres) {
+    const result = await db.query(convertToPostgresParams(sql), params);
+    return result.rows;
+  } else {
+    // SQLite is synchronous, wrap in Promise
+    return Promise.resolve(db.prepare(sql).all(...params));
+  }
+}
+
+/**
+ * Execute a query and return first row
+ */
+async function queryOne(sql, params = []) {
+  if (isPostgres) {
+    const result = await db.query(convertToPostgresParams(sql), params);
+    return result.rows[0] || null;
+  } else {
+    // SQLite is synchronous, wrap in Promise
+    return Promise.resolve(db.prepare(sql).get(...params) || null);
+  }
+}
+
+/**
+ * Execute a query (INSERT, UPDATE, DELETE)
+ */
+async function run(sql, params = []) {
+  if (isPostgres) {
+    const result = await db.query(convertToPostgresParams(sql), params);
+    return { changes: result.rowCount };
+  } else {
+    // SQLite is synchronous, wrap in Promise
+    return Promise.resolve(db.prepare(sql).run(...params));
+  }
+}
+
+/**
+ * Convert ? placeholders to $1, $2, etc. for PostgreSQL
+ */
+function convertToPostgresParams(sql) {
+  let paramIndex = 0;
+  return sql.replace(/\?/g, () => `$${++paramIndex}`);
+}
+
+/**
+ * Convert datetime functions for cross-database compatibility
+ */
+function now() {
+  return isPostgres ? 'NOW()' : "datetime('now')";
+}
+
+// =============================================================================
+// SCHEMA INITIALIZATION
+// =============================================================================
+
+async function initializeSchema() {
+  if (isPostgres) {
+    // PostgreSQL schema
+    const pgSchema = `
+      CREATE TABLE IF NOT EXISTS users (
+        id VARCHAR(36) PRIMARY KEY,
+        username VARCHAR(50) UNIQUE NOT NULL,
+        email VARCHAR(255) UNIQUE NOT NULL,
+        password_hash VARCHAR(255) NOT NULL,
+        first_name VARCHAR(100),
+        last_name VARCHAR(100),
+        role VARCHAR(20) DEFAULT 'STAFF' CHECK (role IN ('STAFF', 'ADMIN')),
+        is_active BOOLEAN DEFAULT TRUE,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE TABLE IF NOT EXISTS sessions (
+        id VARCHAR(36) PRIMARY KEY,
+        customer_language VARCHAR(10) NOT NULL,
+        customer_name VARCHAR(255),
+        notes TEXT,
+        status VARCHAR(20) DEFAULT 'ACTIVE' CHECK (status IN ('ACTIVE', 'COMPLETED')),
+        staff_id VARCHAR(36) NOT NULL REFERENCES users(id),
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        completed_at TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE TABLE IF NOT EXISTS translations (
+        id VARCHAR(36) PRIMARY KEY,
+        session_id VARCHAR(36) NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
+        original_text TEXT NOT NULL,
+        translated_text TEXT NOT NULL,
+        source_language VARCHAR(10) NOT NULL,
+        target_language VARCHAR(10) NOT NULL,
+        speaker_type VARCHAR(20) DEFAULT 'customer' CHECK (speaker_type IN ('staff', 'customer')),
+        confidence DECIMAL(5,4),
+        processing_time_ms INTEGER,
+        audio_url TEXT,
+        staff_id VARCHAR(36) NOT NULL REFERENCES users(id),
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE TABLE IF NOT EXISTS refresh_tokens (
+        id VARCHAR(36) PRIMARY KEY,
+        user_id VARCHAR(36) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        token_hash VARCHAR(255) NOT NULL,
+        expires_at TIMESTAMP NOT NULL,
+        revoked BOOLEAN DEFAULT FALSE,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_sessions_staff ON sessions(staff_id);
+      CREATE INDEX IF NOT EXISTS idx_translations_session ON translations(session_id);
+      CREATE INDEX IF NOT EXISTS idx_refresh_tokens_user ON refresh_tokens(user_id);
+    `;
+    
+    await db.query(pgSchema);
+    console.log('✓ PostgreSQL schema initialized');
+  } else {
+    // SQLite schema
+    const schemaPath = path.join(__dirname, 'schema.sql');
+    const schema = fs.readFileSync(schemaPath, 'utf8');
+    db.exec(schema);
+    console.log('✓ SQLite schema initialized');
+  }
+}
 
 // =============================================================================
 // SEED DATA
@@ -46,7 +197,7 @@ initializeSchema();
 
 async function seedDatabase() {
   // Check if admin user already exists
-  const existingAdmin = db.prepare('SELECT id FROM users WHERE role = ?').get('ADMIN');
+  const existingAdmin = await queryOne('SELECT id FROM users WHERE username = ?', ['admin']);
   
   if (existingAdmin) {
     console.log('✓ Database already seeded');
@@ -54,282 +205,150 @@ async function seedDatabase() {
   }
 
   console.log('Seeding database...');
-
-  // Create default users
-  const passwordHash = await bcrypt.hash('password123', 12);
+  const passwordHash = await bcrypt.hash('admin123', 12);
+  const staffPasswordHash = await bcrypt.hash('staff123', 12);
   
-  const users = [
-    {
-      id: uuidv4(),
-      username: 'admin',
-      email: 'admin@cportcu.org',
-      password_hash: passwordHash,
-      first_name: 'System',
-      last_name: 'Administrator',
-      role: 'ADMIN',
-      branch_id: 'forest-avenue',
-    },
-    {
-      id: uuidv4(),
-      username: 'greeter1',
-      email: 'sarah.wilson@cportcu.org',
-      password_hash: passwordHash,
-      first_name: 'Sarah',
-      last_name: 'Wilson',
-      role: 'GREETER',
-      branch_id: 'forest-avenue',
-    },
-    {
-      id: uuidv4(),
-      username: 'teller1',
-      email: 'mike.johnson@cportcu.org',
-      password_hash: passwordHash,
-      first_name: 'Mike',
-      last_name: 'Johnson',
-      role: 'TELLER',
-      branch_id: 'forest-avenue',
-    },
-    {
-      id: uuidv4(),
-      username: 'consultor1',
-      email: 'lisa.chen@cportcu.org',
-      password_hash: passwordHash,
-      first_name: 'Lisa',
-      last_name: 'Chen',
-      role: 'CONSULTOR',
-      branch_id: 'forest-avenue',
-    },
-  ];
+  // Create admin user
+  await run(
+    `INSERT INTO users (id, username, email, password_hash, first_name, last_name, role)
+     VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    [uuidv4(), 'admin', 'admin@cportcu.org', passwordHash, 'Admin', 'User', 'ADMIN']
+  );
 
-  const insertUser = db.prepare(`
-    INSERT INTO users (id, username, email, password_hash, first_name, last_name, role, branch_id)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-  `);
+  // Create staff user
+  await run(
+    `INSERT INTO users (id, username, email, password_hash, first_name, last_name, role)
+     VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    [uuidv4(), 'staff', 'staff@cportcu.org', staffPasswordHash, 'Staff', 'Member', 'STAFF']
+  );
 
-  const insertMany = db.transaction((users) => {
-    for (const user of users) {
-      insertUser.run(
-        user.id,
-        user.username,
-        user.email,
-        user.password_hash,
-        user.first_name,
-        user.last_name,
-        user.role,
-        user.branch_id
-      );
-    }
-  });
-
-  insertMany(users);
-  console.log('✓ Database seeded with default users');
-  console.log('  Default password for all users: password123');
+  console.log('✓ Database seeded');
+  console.log('  Admin: admin / admin123');
+  console.log('  Staff: staff / staff123');
 }
 
 // =============================================================================
-// USER QUERIES - Now safe since schema is initialized above
+// QUERY OBJECTS (for backwards compatibility with existing code)
 // =============================================================================
 
-const userQueries = {
-  findByEmail: db.prepare(`
-    SELECT id, username, email, password_hash, first_name, last_name, role, branch_id, is_active, created_at, updated_at
-    FROM users WHERE email = ?
-  `),
+const queries = {
+  users: {
+    findByEmail: {
+      get: async (email) => queryOne('SELECT * FROM users WHERE email = ?', [email]),
+    },
+    findByUsername: {
+      get: async (username) => queryOne('SELECT * FROM users WHERE username = ?', [username]),
+    },
+    findById: {
+      get: async (id) => queryOne(
+        'SELECT id, username, email, first_name, last_name, role, is_active, created_at FROM users WHERE id = ?',
+        [id]
+      ),
+    },
+    findAll: {
+      all: async () => query(
+        'SELECT id, username, email, first_name, last_name, role, is_active, created_at FROM users WHERE is_active = true ORDER BY created_at DESC'
+      ),
+    },
+    create: {
+      run: async (...params) => run(
+        `INSERT INTO users (id, username, email, password_hash, first_name, last_name, role) VALUES (?, ?, ?, ?, ?, ?, 'ADMIN')`,
+        params
+      ),
+    },
+  },
   
-  findById: db.prepare(`
-    SELECT id, username, email, first_name, last_name, role, branch_id, is_active, created_at, updated_at
-    FROM users WHERE id = ?
-  `),
+  sessions: {
+    create: {
+      run: async (...params) => run(
+        `INSERT INTO sessions (id, customer_language, customer_name, notes, staff_id) VALUES (?, ?, ?, ?, ?)`,
+        params
+      ),
+    },
+    findById: {
+      get: async (id) => queryOne(
+        `SELECT s.*, u.first_name as staff_first_name, u.last_name as staff_last_name
+         FROM sessions s JOIN users u ON s.staff_id = u.id WHERE s.id = ?`,
+        [id]
+      ),
+    },
+    findAll: {
+      all: async () => query(
+        `SELECT s.*, u.first_name as staff_first_name, u.last_name as staff_last_name,
+                (SELECT COUNT(*) FROM translations WHERE session_id = s.id) as translation_count
+         FROM sessions s JOIN users u ON s.staff_id = u.id ORDER BY s.created_at DESC LIMIT 100`
+      ),
+    },
+    findByStaff: {
+      all: async (staffId) => query(
+        `SELECT s.*, (SELECT COUNT(*) FROM translations WHERE session_id = s.id) as translation_count
+         FROM sessions s WHERE s.staff_id = ? ORDER BY s.created_at DESC`,
+        [staffId]
+      ),
+    },
+    complete: {
+      run: async (id) => run(
+        isPostgres 
+          ? `UPDATE sessions SET status = 'COMPLETED', completed_at = NOW() WHERE id = ?`
+          : `UPDATE sessions SET status = 'COMPLETED', completed_at = datetime('now') WHERE id = ?`,
+        [id]
+      ),
+    },
+  },
   
-  findAll: db.prepare(`
-    SELECT id, username, email, first_name, last_name, role, branch_id, is_active, created_at, updated_at
-    FROM users WHERE is_active = 1 ORDER BY created_at DESC
-  `),
+  translations: {
+    create: {
+      run: async (...params) => run(
+        `INSERT INTO translations (id, session_id, original_text, translated_text, source_language, target_language, speaker_type, confidence, processing_time_ms, audio_url, staff_id)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        params
+      ),
+    },
+    findBySession: {
+      all: async (sessionId) => query(
+        `SELECT t.*, u.first_name as staff_first_name, u.last_name as staff_last_name
+         FROM translations t JOIN users u ON t.staff_id = u.id WHERE t.session_id = ? ORDER BY t.created_at ASC`,
+        [sessionId]
+      ),
+    },
+    findAll: {
+      all: async () => query(
+        `SELECT t.*, s.customer_language, s.customer_name, u.first_name as staff_first_name, u.last_name as staff_last_name
+         FROM translations t JOIN sessions s ON t.session_id = s.id JOIN users u ON t.staff_id = u.id ORDER BY t.created_at DESC LIMIT 500`
+      ),
+    },
+    findRecent: {
+      all: async (limit) => query(
+        `SELECT t.*, s.customer_language, s.customer_name, u.first_name as staff_first_name, u.last_name as staff_last_name
+         FROM translations t JOIN sessions s ON t.session_id = s.id JOIN users u ON t.staff_id = u.id ORDER BY t.created_at DESC LIMIT ?`,
+        [limit]
+      ),
+    },
+    updateAudioUrl: {
+      run: async (audioUrl, id) => run(`UPDATE translations SET audio_url = ? WHERE id = ?`, [audioUrl, id]),
+    },
+  },
   
-  create: db.prepare(`
-    INSERT INTO users (id, username, email, password_hash, first_name, last_name, role, branch_id)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-  `),
-  
-  update: db.prepare(`
-    UPDATE users SET first_name = ?, last_name = ?, role = ?, branch_id = ? WHERE id = ?
-  `),
-};
-
-// =============================================================================
-// SESSION QUERIES
-// =============================================================================
-
-const sessionQueries = {
-  create: db.prepare(`
-    INSERT INTO sessions (id, customer_name, customer_phone, preferred_language, service_type, priority, branch_id, greeter_id)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-  `),
-  
-  findById: db.prepare(`
-    SELECT s.*, 
-           g.first_name as greeter_first_name, g.last_name as greeter_last_name,
-           b.first_name as banker_first_name, b.last_name as banker_last_name
-    FROM sessions s
-    LEFT JOIN users g ON s.greeter_id = g.id
-    LEFT JOIN users b ON s.assigned_banker_id = b.id
-    WHERE s.id = ?
-  `),
-  
-  findActive: db.prepare(`
-    SELECT s.*, 
-           g.first_name as greeter_first_name, g.last_name as greeter_last_name,
-           b.first_name as banker_first_name, b.last_name as banker_last_name
-    FROM sessions s
-    LEFT JOIN users g ON s.greeter_id = g.id
-    LEFT JOIN users b ON s.assigned_banker_id = b.id
-    WHERE s.status IN ('ACTIVE', 'WAITING', 'IN_SERVICE')
-    AND s.branch_id = ?
-    ORDER BY s.created_at DESC
-  `),
-  
-  update: db.prepare(`
-    UPDATE sessions SET 
-      customer_name = COALESCE(?, customer_name),
-      service_type = COALESCE(?, service_type),
-      priority = COALESCE(?, priority),
-      emotion_state = COALESCE(?, emotion_state),
-      status = COALESCE(?, status),
-      assigned_banker_id = COALESCE(?, assigned_banker_id)
-    WHERE id = ?
-  `),
-  
-  complete: db.prepare(`
-    UPDATE sessions SET status = 'COMPLETED', completed_at = datetime('now') WHERE id = ?
-  `),
-};
-
-// =============================================================================
-// TRANSLATION QUERIES
-// =============================================================================
-
-const translationQueries = {
-  create: db.prepare(`
-    INSERT INTO translations (id, session_id, original_text, translated_text, source_language, target_language, confidence, context, speaker_type, processing_time_ms, created_by_id)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `),
-  
-  findBySession: db.prepare(`
-    SELECT * FROM translations WHERE session_id = ? ORDER BY created_at ASC
-  `),
-};
-
-// =============================================================================
-// QUEUE QUERIES
-// =============================================================================
-
-const queueQueries = {
-  create: db.prepare(`
-    INSERT INTO queue_items (id, session_id, queue_type, position, estimated_wait_minutes, priority)
-    VALUES (?, ?, ?, ?, ?, ?)
-  `),
-  
-  findById: db.prepare(`
-    SELECT q.*, s.customer_name, s.preferred_language, s.service_type, s.emotion_state
-    FROM queue_items q
-    JOIN sessions s ON q.session_id = s.id
-    WHERE q.id = ?
-  `),
-  
-  findByType: db.prepare(`
-    SELECT q.*, s.customer_name, s.preferred_language, s.service_type, s.emotion_state,
-           b.first_name as banker_first_name, b.last_name as banker_last_name
-    FROM queue_items q
-    JOIN sessions s ON q.session_id = s.id
-    LEFT JOIN users b ON q.assigned_banker_id = b.id
-    WHERE q.queue_type = ? AND q.status IN ('WAITING', 'CALLED')
-    ORDER BY 
-      CASE q.priority 
-        WHEN 'URGENT' THEN 1 
-        WHEN 'HIGH' THEN 2 
-        WHEN 'STANDARD' THEN 3 
-        WHEN 'LOW' THEN 4 
-      END,
-      q.position ASC
-  `),
-  
-  getStats: db.prepare(`
-    SELECT 
-      queue_type,
-      COUNT(*) as count,
-      AVG(estimated_wait_minutes) as avg_wait
-    FROM queue_items
-    WHERE status = 'WAITING'
-    GROUP BY queue_type
-  `),
-  
-  getNextPosition: db.prepare(`
-    SELECT COALESCE(MAX(position), 0) + 1 as next_position
-    FROM queue_items
-    WHERE queue_type = ? AND status = 'WAITING'
-  `),
-  
-  update: db.prepare(`
-    UPDATE queue_items SET 
-      status = COALESCE(?, status),
-      assigned_banker_id = COALESCE(?, assigned_banker_id),
-      called_at = CASE WHEN ? = 'CALLED' THEN datetime('now') ELSE called_at END,
-      completed_at = CASE WHEN ? = 'COMPLETED' THEN datetime('now') ELSE completed_at END
-    WHERE id = ?
-  `),
-};
-
-// =============================================================================
-// CHAT HISTORY QUERIES
-// =============================================================================
-
-const chatQueries = {
-  create: db.prepare(`
-    INSERT INTO chat_messages (id, session_id, translation_id, speaker_type, original_text, translated_text, source_language, target_language, confidence)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `),
-  
-  findBySession: db.prepare(`
-    SELECT * FROM chat_messages WHERE session_id = ? ORDER BY timestamp ASC
-  `),
-};
-
-// =============================================================================
-// REFRESH TOKEN QUERIES
-// =============================================================================
-
-const tokenQueries = {
-  create: db.prepare(`
-    INSERT INTO refresh_tokens (id, user_id, token_hash, expires_at)
-    VALUES (?, ?, ?, ?)
-  `),
-  
-  findByHash: db.prepare(`
-    SELECT * FROM refresh_tokens WHERE token_hash = ? AND revoked = 0
-  `),
-  
-  revoke: db.prepare(`
-    UPDATE refresh_tokens SET revoked = 1 WHERE id = ?
-  `),
-  
-  revokeAllForUser: db.prepare(`
-    UPDATE refresh_tokens SET revoked = 1 WHERE user_id = ?
-  `),
-  
-  cleanup: db.prepare(`
-    DELETE FROM refresh_tokens WHERE expires_at < datetime('now') OR revoked = 1
-  `),
-};
-
-// =============================================================================
-// AUDIT QUERIES
-// =============================================================================
-
-const auditQueries = {
-  create: db.prepare(`
-    INSERT INTO audit_logs (id, user_id, session_id, action, resource, details, ip_address)
-    VALUES (?, ?, ?, ?, ?, ?, ?)
-  `),
+  tokens: {
+    create: {
+      run: async (...params) => run(
+        `INSERT INTO refresh_tokens (id, user_id, token_hash, expires_at) VALUES (?, ?, ?, ?)`,
+        params
+      ),
+    },
+    findByHash: {
+      get: async (hash) => queryOne(
+        `SELECT * FROM refresh_tokens WHERE token_hash = ? AND revoked = false`,
+        [hash]
+      ),
+    },
+    revoke: {
+      run: async (id) => run(`UPDATE refresh_tokens SET revoked = true WHERE id = ?`, [id]),
+    },
+    revokeAllForUser: {
+      run: async (userId) => run(`UPDATE refresh_tokens SET revoked = true WHERE user_id = ?`, [userId]),
+    },
+  },
 };
 
 // =============================================================================
@@ -338,15 +357,11 @@ const auditQueries = {
 
 module.exports = {
   db,
+  query,
+  queryOne,
+  run,
   initializeSchema,
   seedDatabase,
-  queries: {
-    users: userQueries,
-    sessions: sessionQueries,
-    translations: translationQueries,
-    queue: queueQueries,
-    chat: chatQueries,
-    tokens: tokenQueries,
-    audit: auditQueries,
-  },
+  queries,
+  isPostgres,
 };

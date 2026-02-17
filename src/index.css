@@ -1,63 +1,109 @@
 /* =============================================================================
    CPORT CREDIT UNION TRANSLATION TOOL - GLOBAL STYLES
+   Official cPort Credit Union Branding
    ============================================================================= */
 
 @import 'tailwindcss';
 
-/* Custom CSS Variables */
+/* =============================================================================
+   CSS CUSTOM PROPERTIES - cPort Brand
+   ============================================================================= */
+
 :root {
-  /* Font imports */
+  /* Primary Brand - cPort Teal */
+  --cport-teal: #00A6A6;
+  --cport-teal-dark: #007A7A;
+  --cport-teal-light: #33C3C3;
+  
+  /* Secondary - Deep Blue/Navy */
+  --cport-navy: #0D2137;
+  --cport-blue: #1B4965;
+  --cport-blue-light: #2C5F7C;
+  
+  /* Accents */
+  --cport-green: #4CAF50;
+  --cport-green-light: #81C784;
+  --cport-gold: #D4A84B;
+  
+  /* Neutrals */
+  --cport-slate: #1E3A4C;
+  --cport-gray: #8FA3B0;
+  --cport-gray-light: #C4D1D9;
+  --cport-white: #F5F8FA;
+  
+  /* Font Stack */
   --font-sans: 'Inter', 'SF Pro Display', system-ui, -apple-system, sans-serif;
-  --font-mono: 'JetBrains Mono', 'SF Mono', 'Menlo', monospace;
+  --font-mono: 'JetBrains Mono', 'SF Mono', 'Consolas', monospace;
 }
 
-/* Base styles */
+/* =============================================================================
+   BASE STYLES
+   ============================================================================= */
+
 html {
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
 }
 
 body {
   margin: 0;
   padding: 0;
-  background-color: #0A0F1C; /* brand-midnight */
-  color: #E0E8F0; /* brand-sea-foam */
+  background-color: var(--cport-navy);
+  color: var(--cport-white);
   min-height: 100vh;
 }
 
-/* Scrollbar styling */
+/* =============================================================================
+   SCROLLBAR - cPort Branded
+   ============================================================================= */
+
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;
 }
 
 ::-webkit-scrollbar-track {
-  background: #0D1B2A; /* brand-deep-ocean */
+  background: var(--cport-navy);
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #415A77; /* brand-harbor */
+  background: var(--cport-slate);
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #778DA9; /* brand-fog */
+  background: var(--cport-gray);
 }
 
-/* Focus styles */
+/* =============================================================================
+   FOCUS STATES - Accessibility
+   ============================================================================= */
+
 :focus-visible {
-  outline: 2px solid #0284C7; /* info-600 */
+  outline: 2px solid var(--cport-teal);
   outline-offset: 2px;
 }
 
-/* Selection */
+/* Remove default focus for mouse users */
+:focus:not(:focus-visible) {
+  outline: none;
+}
+
+/* =============================================================================
+   SELECTION
+   ============================================================================= */
+
 ::selection {
-  background: #0284C7;
+  background: var(--cport-teal);
   color: white;
 }
 
-/* Custom utilities */
+/* =============================================================================
+   CUSTOM UTILITIES
+   ============================================================================= */
+
 @layer utilities {
   .text-balance {
     text-wrap: balance;
@@ -71,9 +117,27 @@ body {
     -ms-overflow-style: none;
     scrollbar-width: none;
   }
+  
+  /* cPort gradient text */
+  .text-gradient-cport {
+    background: linear-gradient(135deg, var(--cport-teal) 0%, var(--cport-teal-light) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  
+  /* Glass effect for cards */
+  .glass {
+    background: rgba(30, 41, 59, 0.8);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+  }
 }
 
-/* Animation keyframes (if not in Tailwind) */
+/* =============================================================================
+   ANIMATION KEYFRAMES
+   ============================================================================= */
+
 @keyframes pulse-ring {
   0% {
     transform: scale(1);
@@ -92,11 +156,9 @@ body {
 @keyframes fade-in {
   0% {
     opacity: 0;
-    transform: translateY(8px);
   }
   100% {
     opacity: 1;
-    transform: translateY(0);
   }
 }
 
@@ -111,10 +173,42 @@ body {
   }
 }
 
-/* Print styles */
+@keyframes scale-in {
+  0% {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Recording pulse animation */
+@keyframes recording-pulse {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7);
+  }
+  50% {
+    box-shadow: 0 0 0 20px rgba(239, 68, 68, 0);
+  }
+}
+
+.animate-recording-pulse {
+  animation: recording-pulse 1.5s ease-in-out infinite;
+}
+
+/* =============================================================================
+   PRINT STYLES
+   ============================================================================= */
+
 @media print {
   body {
     background: white;
     color: black;
+  }
+  
+  .no-print {
+    display: none !important;
   }
 }

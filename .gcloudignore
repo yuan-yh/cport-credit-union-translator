@@ -1,0 +1,7 @@
+# Ignore these for cloud build
+node_modules/
+.git/
+.DS_Store
+*.log
+dist/
+server/node_modules/

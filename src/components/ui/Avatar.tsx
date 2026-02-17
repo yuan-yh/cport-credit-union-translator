@@ -10,7 +10,7 @@ const avatarVariants = cva(
   [
     'inline-flex items-center justify-center',
     'rounded-full font-medium',
-    'bg-brand-harbor text-white',
+    'bg-cport-gray text-white',
   ],
   {
     variants: {

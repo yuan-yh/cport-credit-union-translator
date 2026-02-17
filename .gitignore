@@ -27,4 +27,5 @@ dist-ssr
 server/.env
 *.wav
 cloud-run.env
-*.env
+*.envserver/gcs-key.json
+*.json.key

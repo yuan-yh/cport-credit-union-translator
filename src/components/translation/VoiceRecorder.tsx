@@ -12,6 +12,7 @@ interface VoiceRecorderProps {
   onRecordingComplete: (audioBlob: Blob, duration: number) => void;
   onError?: (error: string) => void;
   isProcessing?: boolean;
+  disabled?: boolean;
   size?: 'sm' | 'md' | 'lg';
   className?: string;
 }
@@ -20,6 +21,7 @@ export function VoiceRecorder({
   onRecordingComplete,
   onError,
   isProcessing = false,
+  disabled = false,
   size = 'lg',
   className,
 }: VoiceRecorderProps): React.ReactElement {
@@ -112,7 +114,7 @@ export function VoiceRecorder({
   }, [state]);
 
   const handleMouseDown = () => {
-    if (state === 'idle') {
+    if (state === 'idle' && !disabled) {
       startRecording();
     }
   };
@@ -125,7 +127,7 @@ export function VoiceRecorder({
 
   // Keyboard support
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.code === 'Space' && state === 'idle') {
+    if (e.code === 'Space' && state === 'idle' && !disabled) {
       e.preventDefault();
       startRecording();
     }
@@ -163,15 +165,19 @@ export function VoiceRecorder({
         onTouchEnd={handleMouseUp}
         onKeyDown={handleKeyDown}
         onKeyUp={handleKeyUp}
-        disabled={state === 'processing'}
+        disabled={state === 'processing' || disabled}
         className={cn(
           'relative rounded-full transition-all duration-200',
-          'focus:outline-none focus:ring-4 focus:ring-offset-4 focus:ring-offset-brand-midnight',
+          'focus:outline-none focus:ring-4 focus:ring-offset-4 focus:ring-offset-cport-navy',
           sizeClasses[size],
-          state === 'idle' && [
-            'bg-brand-deep-ocean border-4 border-brand-harbor',
-            'hover:border-info-400 hover:shadow-lg',
-            'focus:ring-info-400/50',
+          state === 'idle' && !disabled && [
+            'bg-cport-slate border-4 border-cport-gray/30',
+            'hover:border-cport-teal hover:shadow-lg hover:shadow-cport-teal/20',
+            'focus:ring-cport-teal/50',
+          ],
+          state === 'idle' && disabled && [
+            'bg-cport-slate/50 border-4 border-cport-gray/20',
+            'cursor-not-allowed opacity-50',
           ],
           state === 'recording' && [
             'bg-danger-600 border-4 border-danger-400',
@@ -179,7 +185,7 @@ export function VoiceRecorder({
             'focus:ring-danger-400/50',
           ],
           state === 'processing' && [
-            'bg-brand-steel-blue border-4 border-brand-harbor',
+            'bg-cport-slate border-4 border-cport-gray/30',
             'cursor-wait',
           ]
         )}
@@ -202,13 +208,13 @@ export function VoiceRecorder({
         {/* Icon */}
         <span className="relative z-10 flex items-center justify-center">
           {state === 'idle' && (
-            <Mic className={cn(iconSizes[size], 'text-brand-fog')} />
+            <Mic className={cn(iconSizes[size], 'text-cport-gray')} />
           )}
           {state === 'recording' && (
             <Square className={cn(iconSizes[size], 'text-white fill-white')} />
           )}
           {state === 'processing' && (
-            <Loader2 className={cn(iconSizes[size], 'text-brand-fog animate-spin')} />
+            <Loader2 className={cn(iconSizes[size], 'text-cport-gray animate-spin')} />
           )}
         </span>
       </button>
@@ -216,8 +222,8 @@ export function VoiceRecorder({
       {/* Label */}
       <div className="text-center">
         {state === 'idle' && (
-          <p className="text-body-sm text-brand-fog">
-            Hold to speak
+          <p className="text-body-sm text-cport-gray">
+            {disabled ? 'Service unavailable' : 'Hold to speak'}
           </p>
         )}
         {state === 'recording' && (
@@ -226,7 +232,7 @@ export function VoiceRecorder({
           </p>
         )}
         {state === 'processing' && (
-          <p className="text-body-sm text-brand-fog animate-pulse">
+          <p className="text-body-sm text-cport-gray animate-pulse">
             Processing...
           </p>
         )}

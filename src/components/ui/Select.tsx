@@ -51,7 +51,7 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
         {label && (
           <label
             htmlFor={inputId}
-            className="block text-body-sm font-medium text-brand-fog mb-1.5"
+            className="block text-body-sm font-medium text-cport-gray mb-1.5"
           >
             {label}
           </label>
@@ -63,13 +63,13 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
             id={inputId}
             className={cn(
               'w-full appearance-none cursor-pointer',
-              'bg-brand-steel-blue text-white',
+              'bg-cport-blue/20 text-white',
               'border rounded-lg',
               'transition-all duration-150',
               'focus:outline-none focus:ring-2',
               hasError
                 ? 'border-danger-400 focus:border-danger-400 focus:ring-danger-400/20'
-                : 'border-brand-harbor focus:border-info-400 focus:ring-info-400/20',
+                : 'border-cport-gray focus:border-info-400 focus:ring-info-400/20',
               'disabled:opacity-50 disabled:cursor-not-allowed',
               sizeClasses[size],
               className
@@ -93,7 +93,7 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
           </select>
 
           {/* Dropdown arrow */}
-          <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-brand-fog">
+          <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-cport-gray">
             <ChevronDown className="w-4 h-4" />
           </div>
         </div>
@@ -102,7 +102,7 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
           <p
             className={cn(
               'mt-1.5 text-caption',
-              error ? 'text-danger-400' : 'text-brand-fog'
+              error ? 'text-danger-400' : 'text-cport-gray'
             )}
           >
             {error || hint}

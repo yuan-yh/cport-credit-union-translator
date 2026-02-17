@@ -1,11 +1,11 @@
 steps:
-  # Build the container image
   - name: 'gcr.io/cloud-builders/docker'
-    args: ['build', '-f', 'Dockerfile.backend', '-t', 'gcr.io/solid-choir-472118-q6/cport', '.']
-  
-  # Push the container image to Container Registry
-  - name: 'gcr.io/cloud-builders/docker'
-    args: ['push', 'gcr.io/solid-choir-472118-q6/cport']
-
+    args:
+      - 'build'
+      - '--build-arg'
+      - 'VITE_API_URL=https://cport-translator-576395442003.us-east1.run.app'
+      - '-t'
+      - 'gcr.io/solid-choir-472118-q6/cport-translator-frontend'
+      - '.'
 images:
-  - 'gcr.io/solid-choir-472118-q6/cport'
+  - 'gcr.io/solid-choir-472118-q6/cport-translator-frontend'

@@ -9,13 +9,13 @@ const cors = require('cors');
 const cookieParser = require('cookie-parser');
 const http = require('http');
 const { Server } = require('socket.io');
-const { seedDatabase } = require('./database');
+const { initializeSchema, seedDatabase } = require('./database');
 
 // Import routes
 const authRoutes = require('./routes/auth');
 const sessionRoutes = require('./routes/sessions');
 const translationRoutes = require('./routes/translations');
-const queueRoutes = require('./routes/queue');
+const analyticsRoutes = require('./routes/analytics');
 
 // Import middleware
 const { errorHandler } = require('./middleware/errorHandler');
@@ -76,11 +76,29 @@ app.get('/api/health', (req, res) => {
   });
 });
 
+// Public service status (no auth required)
+app.get('/api/services/status', async (req, res) => {
+  const { getServiceStatus: getTranslationStatus } = require('./services/translation');
+  const { getServiceStatus: getTranscriptionStatus } = require('./services/transcription');
+  const { getServiceStatus: getTTSStatus } = require('./services/tts');
+  
+  res.json({
+    success: true,
+    data: {
+      translation: getTranslationStatus(),
+      transcription: getTranscriptionStatus(),
+      tts: getTTSStatus(),
+      supportedLanguages: ['en', 'pt', 'fr', 'so', 'ar', 'es', 'ln'],
+      lingalaSupport: 'Lingala is fully supported via OpenAI Whisper',
+    },
+  });
+});
+
 // API routes
 app.use('/api/auth', authRoutes);
 app.use('/api/sessions', sessionRoutes);
 app.use('/api/translations', translationRoutes);
-app.use('/api/queue', queueRoutes);
+app.use('/api/analytics', analyticsRoutes);
 
 // 404 handler
 app.use((req, res) => {
@@ -107,7 +125,9 @@ socketHandler(io);
 
 async function initializeDatabase() {
   try {
-    // Schema is already initialized when database module loads
+    // Initialize schema (PostgreSQL or SQLite)
+    await initializeSchema();
+    // Seed initial data
     await seedDatabase();
     console.log('✓ Database ready');
   } catch (error) {

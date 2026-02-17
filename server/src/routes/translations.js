@@ -1,174 +1,205 @@
 // =============================================================================
-// TRANSLATION ROUTES
+// TRANSLATION ROUTES - SIMPLIFIED
 // =============================================================================
 
 const express = require('express');
+const multer = require('multer');
 const { v4: uuidv4 } = require('uuid');
 const { queries } = require('../database');
 const { ApiError } = require('../middleware/errorHandler');
 const { authenticate } = require('../middleware/auth');
+const { translate, getServiceStatus } = require('../services/translation');
+const { transcribeAudio, isServiceAvailable: isTranscriptionAvailable, getServiceStatus: getTranscriptionStatus } = require('../services/transcription');
+const { synthesizeSpeech, isServiceAvailable: isTTSAvailable, getServiceStatus: getTTSStatus } = require('../services/tts');
+const { uploadAudio } = require('../services/storage');
 
 const router = express.Router();
+
+// Configure multer for audio uploads
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 25 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => {
+    const allowedMimes = ['audio/webm', 'audio/wav', 'audio/mpeg', 'audio/mp4', 'audio/ogg', 'audio/flac'];
+    if (allowedMimes.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error(`Unsupported audio format: ${file.mimetype}`), false);
+    }
+  },
+});
 
 // All routes require authentication
 router.use(authenticate);
 
+const validLanguages = ['en', 'pt', 'fr', 'so', 'ar', 'es', 'ln'];
+
 // =============================================================================
-// MOCK TRANSLATION SERVICE
-// In production, replace with actual Google Cloud Translation API
+// GET SERVICE STATUS
 // =============================================================================
 
-async function translateText(text, sourceLanguage, targetLanguage) {
-  const startTime = Date.now();
+router.get('/status', async (req, res) => {
+  const translationStatus = getServiceStatus();
+  const transcriptionStatus = getTranscriptionStatus();
+  const ttsStatus = getTTSStatus();
   
-  // Simulate API delay
-  await new Promise(resolve => setTimeout(resolve, 200 + Math.random() * 300));
-  
-  // Mock translations for common banking phrases
-  const mockTranslations = {
-    'pt': {
-      'Hello, how can I help you today?': 'Olá, como posso ajudá-lo hoje?',
-      'I need to open a savings account': 'Preciso abrir uma conta poupança',
-      'I would like to make a deposit': 'Eu gostaria de fazer um depósito',
-      'Can you check my balance?': 'Você pode verificar meu saldo?',
+  res.json({
+    success: true,
+    data: {
+      translation: translationStatus,
+      transcription: transcriptionStatus,
+      tts: ttsStatus,
+      supportedLanguages: validLanguages,
     },
-    'fr': {
-      'Hello, how can I help you today?': 'Bonjour, comment puis-je vous aider aujourd\'hui?',
-      'I need to open a savings account': 'Je dois ouvrir un compte d\'épargne',
-      'I would like to make a deposit': 'Je voudrais faire un dépôt',
-      'Can you check my balance?': 'Pouvez-vous vérifier mon solde?',
-    },
-    'es': {
-      'Hello, how can I help you today?': '¡Hola! ¿Cómo puedo ayudarle hoy?',
-      'I need to open a savings account': 'Necesito abrir una cuenta de ahorros',
-      'I would like to make a deposit': 'Me gustaría hacer un depósito',
-      'Can you check my balance?': '¿Puede verificar mi saldo?',
-    },
-    'so': {
-      'Hello, how can I help you today?': 'Salaan, sidee kuu caawin karaa maanta?',
-      'I need to open a savings account': 'Waxaan u baahanahay inaan furo koonto kaydis',
-    },
-    'ar': {
-      'Hello, how can I help you today?': 'مرحبا، كيف يمكنني مساعدتك اليوم؟',
-      'I need to open a savings account': 'أحتاج إلى فتح حساب توفير',
-    },
-  };
-
-  // Try to find a mock translation
-  let translatedText = text;
-  let confidence = 0.85 + Math.random() * 0.15; // 85-100%
-
-  if (sourceLanguage === 'en' && mockTranslations[targetLanguage]) {
-    translatedText = mockTranslations[targetLanguage][text] || `[${targetLanguage.toUpperCase()}] ${text}`;
-  } else if (targetLanguage === 'en') {
-    // Reverse lookup for translations to English
-    translatedText = `[EN] ${text}`;
-    confidence = 0.90 + Math.random() * 0.10;
-  }
-
-  const processingTimeMs = Date.now() - startTime;
-
-  return {
-    translatedText,
-    confidence,
-    processingTimeMs,
-  };
-}
+  });
+});
 
 // =============================================================================
-// CREATE TRANSLATION
+// GET ALL TRANSLATIONS (Admin Dashboard)
 // =============================================================================
 
-router.post('/', async (req, res, next) => {
+router.get('/', async (req, res, next) => {
   try {
-    const { 
-      sessionId, 
-      text, 
-      sourceLanguage, 
-      targetLanguage, 
-      speakerType,
-      context,
-    } = req.body;
+    const limit = parseInt(req.query.limit) || 500;
+    const translations = await queries.translations.findRecent.all(limit);
 
-    // Validate required fields
-    if (!sessionId || !text || !sourceLanguage || !targetLanguage || !speakerType) {
+    res.json({
+      success: true,
+      data: translations.map(formatTranslation),
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// =============================================================================
+// FULL TRANSLATION PIPELINE (Audio -> STT -> Translate -> TTS)
+// =============================================================================
+
+router.post('/full-pipeline', upload.single('audio'), async (req, res, next) => {
+  try {
+    const { sessionId, sourceLanguage, targetLanguage, speakerType, context } = req.body;
+    
+    console.log(`[Pipeline] Starting: ${sourceLanguage} -> ${targetLanguage}, speaker: ${speakerType}`);
+    
+    if (!req.file) {
+      throw new ApiError(400, 'Audio file is required', 'NO_AUDIO');
+    }
+
+    if (!sessionId || !sourceLanguage || !targetLanguage || !speakerType) {
       throw new ApiError(400, 'Missing required fields', 'VALIDATION_ERROR');
     }
 
-    const validLanguages = ['en', 'pt', 'fr', 'so', 'ar', 'es'];
     if (!validLanguages.includes(sourceLanguage) || !validLanguages.includes(targetLanguage)) {
       throw new ApiError(400, 'Invalid language code', 'VALIDATION_ERROR');
     }
 
     // Check session exists
-    const session = queries.sessions.findById.get(sessionId);
+    const session = await queries.sessions.findById.get(sessionId);
     if (!session) {
       throw new ApiError(404, 'Session not found', 'NOT_FOUND');
     }
 
-    // Perform translation
-    const { translatedText, confidence, processingTimeMs } = await translateText(
-      text,
-      sourceLanguage,
-      targetLanguage
-    );
+    const startTime = Date.now();
 
-    // Save translation
+    // Step 1: Transcribe audio (STT)
+    console.log(`[Pipeline] Step 1: Transcribing...`);
+    const transcription = await transcribeAudio(req.file.buffer, sourceLanguage);
+    console.log(`[Pipeline] STT: "${transcription.text}"`);
+
+    // Validate transcription
+    const trimmedText = (transcription.text || '').trim();
+    if (!trimmedText || trimmedText.length < 2) {
+      console.log(`[Pipeline] No speech detected`);
+      return res.json({
+        success: true,
+        data: {
+          noSpeechDetected: true,
+          message: 'No speech detected',
+          processingTimeMs: Date.now() - startTime,
+        },
+      });
+    }
+
+    // Step 2: Translate
+    console.log(`[Pipeline] Step 2: Translating...`);
+    const translation = await translate(
+      transcription.text, 
+      sourceLanguage, 
+      targetLanguage,
+      { context: context || `Banking conversation. Speaker: ${speakerType}` }
+    );
+    console.log(`[Pipeline] Translation: "${translation.translatedText}"`);
+
+    // Step 3: Generate TTS
+    let ttsAudioBase64 = null;
+    if (isTTSAvailable()) {
+      console.log(`[Pipeline] Step 3: Generating TTS...`);
+      try {
+        const audioBuffer = await synthesizeSpeech(translation.translatedText, targetLanguage);
+        ttsAudioBase64 = audioBuffer.toString('base64');
+      } catch (ttsError) {
+        console.error(`[Pipeline] TTS error:`, ttsError.message);
+      }
+    }
+
+    const totalProcessingTime = Date.now() - startTime;
+
+    // Step 4: Upload original audio to Google Cloud Storage
+    let audioUrl = null;
+    try {
+      audioUrl = await uploadAudio(req.file.buffer, `${sessionId}/${uuidv4()}.webm`);
+      console.log(`[Pipeline] Audio uploaded to: ${audioUrl}`);
+    } catch (storageError) {
+      console.error(`[Pipeline] Storage error:`, storageError.message);
+    }
+
+    // Save to database
     const translationId = uuidv4();
     
-    queries.translations.create.run(
+    await queries.translations.create.run(
       translationId,
       sessionId,
-      text,
-      translatedText,
+      transcription.text,
+      translation.translatedText,
       sourceLanguage,
       targetLanguage,
-      confidence,
-      context || null,
       speakerType,
-      processingTimeMs,
+      Math.min(transcription.confidence, translation.confidence),
+      totalProcessingTime,
+      audioUrl,
       req.user.id
     );
 
-    // Also save to chat history
-    queries.chat.create.run(
-      uuidv4(),
-      sessionId,
-      translationId,
-      speakerType,
-      text,
-      translatedText,
-      sourceLanguage,
-      targetLanguage,
-      confidence
-    );
-
-    const translation = {
+    const result = {
       id: translationId,
       sessionId,
-      originalText: text,
-      translatedText,
+      originalText: transcription.text,
+      translatedText: translation.translatedText,
       sourceLanguage,
       targetLanguage,
-      confidence,
-      context: context || null,
       speakerType,
-      processingTimeMs,
+      confidence: Math.min(transcription.confidence, translation.confidence),
+      processingTimeMs: totalProcessingTime,
+      audioUrl,
+      ttsAudio: ttsAudioBase64,
+      ttsAvailable: !!ttsAudioBase64,
       createdAt: new Date().toISOString(),
-      createdById: req.user.id,
+      staffId: req.user.id,
     };
 
-    // Emit socket event for real-time updates
+    // Emit socket event
     const io = req.app.get('io');
     if (io) {
-      io.to(`session:${sessionId}`).emit('translation:result', translation);
+      io.to(`session:${sessionId}`).emit('translation:result', result);
     }
 
     res.status(201).json({
       success: true,
-      data: translation,
+      data: result,
     });
   } catch (error) {
+    console.error(`[Pipeline] ERROR:`, error.message);
     next(error);
   }
 });
@@ -177,26 +208,12 @@ router.post('/', async (req, res, next) => {
 // GET TRANSLATIONS FOR SESSION
 // =============================================================================
 
-router.get('/:sessionId', (req, res, next) => {
+router.get('/session/:sessionId', async (req, res, next) => {
   try {
-    const translations = queries.translations.findBySession.all(req.params.sessionId);
-
+    const translations = await queries.translations.findBySession.all(req.params.sessionId);
     res.json({
       success: true,
-      data: translations.map(t => ({
-        id: t.id,
-        sessionId: t.session_id,
-        originalText: t.original_text,
-        translatedText: t.translated_text,
-        sourceLanguage: t.source_language,
-        targetLanguage: t.target_language,
-        confidence: t.confidence,
-        context: t.context,
-        speakerType: t.speaker_type,
-        processingTimeMs: t.processing_time_ms,
-        createdAt: t.created_at,
-        createdById: t.created_by_id,
-      })),
+      data: translations.map(formatTranslation),
     });
   } catch (error) {
     next(error);
@@ -204,31 +221,58 @@ router.get('/:sessionId', (req, res, next) => {
 });
 
 // =============================================================================
-// GET CHAT HISTORY FOR SESSION
+// TEXT-TO-SPEECH
 // =============================================================================
 
-router.get('/:sessionId/history', (req, res, next) => {
+router.post('/speak', async (req, res, next) => {
   try {
-    const messages = queries.chat.findBySession.all(req.params.sessionId);
+    const { text, language } = req.body;
+    
+    if (!text) {
+      throw new ApiError(400, 'Text is required', 'VALIDATION_ERROR');
+    }
 
+    if (!isTTSAvailable()) {
+      throw new ApiError(503, 'TTS service not available', 'SERVICE_UNAVAILABLE');
+    }
+
+    const audioBuffer = await synthesizeSpeech(text, language || 'en');
+    
     res.json({
       success: true,
-      data: messages.map(m => ({
-        id: m.id,
-        sessionId: m.session_id,
-        translationId: m.translation_id,
-        speakerType: m.speaker_type,
-        originalText: m.original_text,
-        translatedText: m.translated_text,
-        sourceLanguage: m.source_language,
-        targetLanguage: m.target_language,
-        confidence: m.confidence,
-        timestamp: m.timestamp,
-      })),
+      data: {
+        audio: audioBuffer.toString('base64'),
+        format: 'mp3',
+        language: language || 'en',
+      },
     });
   } catch (error) {
     next(error);
   }
 });
+
+// =============================================================================
+// HELPERS
+// =============================================================================
+
+function formatTranslation(t) {
+  return {
+    id: t.id,
+    sessionId: t.session_id,
+    originalText: t.original_text,
+    translatedText: t.translated_text,
+    sourceLanguage: t.source_language,
+    targetLanguage: t.target_language,
+    speakerType: t.speaker_type,
+    confidence: t.confidence,
+    processingTimeMs: t.processing_time_ms,
+    audioUrl: t.audio_url,
+    staffId: t.staff_id,
+    staffName: t.staff_first_name ? `${t.staff_first_name} ${t.staff_last_name}` : null,
+    customerLanguage: t.customer_language,
+    customerName: t.customer_name,
+    createdAt: t.created_at,
+  };
+}
 
 module.exports = router;

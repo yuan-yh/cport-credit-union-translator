@@ -1,24 +1,35 @@
-import { useState, type FormEvent } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useState, type FormEvent, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Mail, Lock, AlertCircle, Loader2 } from 'lucide-react';
+import { motion } from 'motion/react';
 import { useAuthStore } from '../stores/authStore';
-import { Button, Input, Card } from '../components/ui';
 import { cn } from '../lib/utils';
-import type { UserRole } from '../types';
 
 // =============================================================================
-// LOGIN PAGE
+// LOGIN PAGE - Dark Immersive UI (matches Voice Interface)
 // =============================================================================
 
 export function LoginPage(): React.ReactElement {
   const navigate = useNavigate();
-  const location = useLocation();
   const { login, isLoading } = useAuthStore();
   
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
+
+  // Track mouse for subtle gradient effect
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      setMousePosition({
+        x: (e.clientX / window.innerWidth) * 100,
+        y: (e.clientY / window.innerHeight) * 100,
+      });
+    };
+    window.addEventListener('mousemove', handleMouseMove);
+    return () => window.removeEventListener('mousemove', handleMouseMove);
+  }, []);
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -28,25 +39,9 @@ export function LoginPage(): React.ReactElement {
     try {
       await login({ email, password });
       
-      // Redirect to intended destination or role-based default
-      const from = (location.state as { from?: string })?.from;
-      
-      if (from && from !== '/login') {
-        navigate(from, { replace: true });
-      } else {
-        // Get user role and redirect accordingly
-        const user = useAuthStore.getState().user;
-        if (user) {
-          const roleRedirects: Record<UserRole, string> = {
-            GREETER: '/greeter',
-            TELLER: '/teller',
-            CONSULTOR: '/consultor',
-            MANAGER: '/admin',
-            ADMIN: '/admin',
-          };
-          navigate(roleRedirects[user.role] || '/greeter', { replace: true });
-        }
-      }
+      // Always redirect to /dashboard for role-based routing
+      // Don't use "from" as it may have stale role-specific routes
+      navigate('/dashboard', { replace: true });
     } catch (err) {
       setError(
         err instanceof Error 
@@ -59,156 +54,272 @@ export function LoginPage(): React.ReactElement {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-brand-midnight p-4">
-      {/* Background gradient */}
+    <div className="min-h-screen flex items-center justify-center bg-[#f5f7fa] overflow-hidden relative">
+      {/* Light gradient background */}
       <div 
-        className="absolute inset-0 opacity-30"
+        className="absolute inset-0 transition-all duration-1000 ease-out"
         style={{
-          background: 'radial-gradient(ellipse at center, rgba(27, 38, 59, 0.8) 0%, transparent 70%)',
+          background: `
+            radial-gradient(ellipse 80% 50% at ${mousePosition.x}% ${mousePosition.y}%, 
+              rgba(0, 174, 239, 0.08) 0%, 
+              transparent 50%),
+            radial-gradient(ellipse 60% 40% at 20% 80%, 
+              rgba(0, 174, 239, 0.05) 0%, 
+              transparent 40%),
+            radial-gradient(ellipse 50% 30% at 80% 20%, 
+              rgba(0, 144, 201, 0.06) 0%, 
+              transparent 30%),
+            linear-gradient(180deg, #f5f7fa 0%, #e8eef5 100%)
+          `,
         }}
       />
 
-      <div className="relative z-10 w-full max-w-md">
+      {/* Subtle grid pattern */}
+      <div 
+        className="absolute inset-0 opacity-[0.03]"
+        style={{
+          backgroundImage: `
+            linear-gradient(rgba(0,0,0,0.05) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(0,0,0,0.05) 1px, transparent 1px)
+          `,
+          backgroundSize: '50px 50px',
+        }}
+      />
+
+      {/* Floating orbs - cPort blue (subtle on light bg) */}
+      <motion.div
+        className="absolute w-[500px] h-[500px] rounded-full blur-[120px] opacity-30"
+        style={{ background: 'radial-gradient(circle, #00AEEF 0%, transparent 70%)' }}
+        animate={{
+          x: [0, 100, -50, 0],
+          y: [0, -80, 60, 0],
+        }}
+        transition={{
+          duration: 20,
+          repeat: Infinity,
+          ease: 'easeInOut',
+        }}
+      />
+      <motion.div
+        className="absolute w-[400px] h-[400px] rounded-full blur-[100px] opacity-20"
+        style={{ background: 'radial-gradient(circle, #0090C9 0%, transparent 70%)' }}
+        animate={{
+          x: [0, -80, 40, 0],
+          y: [0, 60, -40, 0],
+        }}
+        transition={{
+          duration: 15,
+          repeat: Infinity,
+          ease: 'easeInOut',
+          delay: 2,
+        }}
+      />
+
+      {/* Login Card */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.6, ease: 'easeOut' }}
+        className="relative z-10 w-full max-w-md px-6"
+      >
         {/* Logo and Title */}
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-info-600 mb-4">
-            <svg
-              viewBox="0 0 24 24"
-              className="w-8 h-8 text-white"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2, duration: 0.5 }}
+          className="text-center mb-10"
+        >
+          {/* Official cPort Full Logo */}
+          <div className="relative inline-flex items-center justify-center mb-6">
+            <motion.div
+              className="absolute w-32 h-32 rounded-full"
+              style={{ 
+                background: 'radial-gradient(circle, rgba(0, 174, 239, 0.1) 0%, transparent 70%)'
+              }}
+              animate={{ scale: [1, 1.05, 1] }}
+              transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
+            />
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, ease: 'easeOut' }}
             >
-              <path d="M12 2L2 7l10 5 10-5-10-5z" />
-              <path d="M2 17l10 5 10-5" />
-              <path d="M2 12l10 5 10-5" />
-            </svg>
+              <img 
+                src="/images/cport-logo-full.png" 
+                alt="cPort Credit Union" 
+                className="h-16 w-auto"
+              />
+            </motion.div>
           </div>
           
-          <h1 className="text-h1 font-bold text-white mb-2">
-            cPort Credit Union
+          <h1 className="text-2xl font-light text-gray-800 mb-2 tracking-tight">
+            Translation <span className="font-semibold" style={{ color: '#00AEEF' }}>Assistant</span>
           </h1>
-          <p className="text-body text-brand-fog">
-            Translation Assistant
+          <p className="text-gray-500 text-sm tracking-wider uppercase">
+            Staff Portal
           </p>
-        </div>
+        </motion.div>
 
-        {/* Login Card */}
-        <Card variant="elevated" padding="lg">
+        {/* Form Card */}
+        <motion.div
+          initial={{ opacity: 0, scale: 0.98 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ delay: 0.3, duration: 0.5 }}
+          className={cn(
+            'rounded-2xl p-8',
+            'bg-white/80 backdrop-blur-xl',
+            'border border-gray-200',
+            'shadow-xl shadow-gray-200/50'
+          )}
+        >
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* Error Alert */}
             {error && (
-              <div className="flex items-start gap-3 p-4 rounded-lg bg-danger-600/10 border border-danger-600/20">
-                <AlertCircle className="w-5 h-5 text-danger-400 shrink-0 mt-0.5" />
-                <p className="text-body-sm text-danger-400">{error}</p>
-              </div>
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="flex items-start gap-3 p-4 rounded-xl bg-red-500/10 border border-red-500/20"
+              >
+                <AlertCircle className="w-5 h-5 text-red-400 shrink-0 mt-0.5" />
+                <p className="text-sm text-red-400">{error}</p>
+              </motion.div>
             )}
 
-            {/* Email Input */}
-            <Input
-              type="email"
-              label="Email"
-              placeholder="staff@cportcu.org"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              leftIcon={<Mail className="w-4 h-4" />}
-              autoComplete="email"
-              required
-              disabled={isSubmitting}
-            />
+            {/* Username Input */}
+            <div className="space-y-2">
+              <label className="text-sm text-gray-600 font-medium">Username</label>
+              <div className="relative">
+                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                <input
+                  type="text"
+                  placeholder="Enter username"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  autoComplete="username"
+                  required
+                  disabled={isSubmitting}
+                  className={cn(
+                    'w-full pl-11 pr-4 py-3.5 rounded-xl',
+                    'bg-gray-50 border border-gray-200',
+                    'text-gray-900 placeholder:text-gray-400',
+                    'focus:outline-none focus:ring-2 focus:ring-[#00AEEF]/30 focus:border-[#00AEEF]',
+                    'transition-all duration-200',
+                    'disabled:opacity-50'
+                  )}
+                />
+              </div>
+            </div>
 
             {/* Password Input */}
-            <Input
-              type="password"
-              label="Password"
-              placeholder="Enter your password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              leftIcon={<Lock className="w-4 h-4" />}
-              autoComplete="current-password"
-              required
-              disabled={isSubmitting}
-            />
+            <div className="space-y-2">
+              <label className="text-sm text-gray-600 font-medium">Password</label>
+              <div className="relative">
+                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                <input
+                  type="password"
+                  placeholder="Enter password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  autoComplete="current-password"
+                  required
+                  disabled={isSubmitting}
+                  className={cn(
+                    'w-full pl-11 pr-4 py-3.5 rounded-xl',
+                    'bg-gray-50 border border-gray-200',
+                    'text-gray-900 placeholder:text-gray-400',
+                    'focus:outline-none focus:ring-2 focus:ring-[#00AEEF]/30 focus:border-[#00AEEF]',
+                    'transition-all duration-200',
+                    'disabled:opacity-50'
+                  )}
+                />
+              </div>
+            </div>
 
             {/* Submit Button */}
-            <Button
+            <motion.button
               type="submit"
-              variant="primary"
-              size="lg"
-              fullWidth
               disabled={isSubmitting || isLoading}
+              whileHover={{ scale: 1.01 }}
+              whileTap={{ scale: 0.99 }}
+              className={cn(
+                'w-full py-4 rounded-xl font-medium text-white',
+                'bg-gradient-to-r from-[#00AEEF] to-[#0090C9]',
+                'hover:from-[#33C1F5] hover:to-[#00AEEF]',
+                'focus:outline-none focus:ring-2 focus:ring-[#00AEEF]/50 focus:ring-offset-2 focus:ring-offset-white',
+                'transition-all duration-200',
+                'disabled:opacity-50 disabled:cursor-not-allowed',
+                'shadow-lg shadow-[#00AEEF]/30'
+              )}
             >
               {isSubmitting ? (
-                <>
+                <span className="flex items-center justify-center gap-2">
                   <Loader2 className="w-4 h-4 animate-spin" />
                   Signing in...
-                </>
+                </span>
               ) : (
                 'Sign In'
               )}
-            </Button>
+            </motion.button>
           </form>
 
-          {/* Demo credentials hint */}
-          <div className="mt-6 pt-6 border-t border-brand-harbor/30">
-            <p className="text-caption text-brand-fog text-center">
-              Demo credentials:
+          {/* Demo credentials */}
+          <div className="mt-8 pt-6 border-t border-gray-200">
+            <p className="text-xs text-gray-500 text-center mb-4">
+              Demo accounts
             </p>
-            <div className="mt-2 grid grid-cols-2 gap-2 text-caption">
-              <DemoCredential 
-                role="Greeter" 
-                email="sarah.wilson@cportcu.org" 
+            <div className="grid grid-cols-2 gap-3">
+              <motion.button
+                type="button"
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
                 onClick={() => {
-                  setEmail('sarah.wilson@cportcu.org');
-                  setPassword('password123');
+                  setEmail('staff');
+                  setPassword('staff123');
                 }}
-              />
-              <DemoCredential 
-                role="Teller" 
-                email="mike.johnson@cportcu.org" 
+                className={cn(
+                  'p-4 rounded-xl text-center',
+                  'bg-gray-50 hover:bg-gray-100',
+                  'border border-gray-200 hover:border-gray-300',
+                  'transition-all duration-200'
+                )}
+              >
+                <p className="font-medium text-gray-700">Staff</p>
+                <p className="text-xs text-gray-500 mt-1">staff / staff123</p>
+              </motion.button>
+              <motion.button
+                type="button"
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
                 onClick={() => {
-                  setEmail('mike.johnson@cportcu.org');
-                  setPassword('password123');
+                  setEmail('admin');
+                  setPassword('admin123');
                 }}
-              />
+                className={cn(
+                  'p-4 rounded-xl text-center',
+                  'bg-gradient-to-br from-[#00AEEF]/10 to-[#0090C9]/10',
+                  'hover:from-[#00AEEF]/20 hover:to-[#0090C9]/20',
+                  'border border-[#00AEEF]/30 hover:border-[#00AEEF]/50',
+                  'transition-all duration-200'
+                )}
+              >
+                <p className="font-medium" style={{ color: '#00AEEF' }}>Admin</p>
+                <p className="text-xs text-gray-600 mt-1">admin / admin123</p>
+              </motion.button>
             </div>
           </div>
-        </Card>
+        </motion.div>
 
         {/* Footer */}
-        <p className="mt-6 text-caption text-brand-harbor text-center">
+        <motion.p
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.6 }}
+          className="mt-8 text-xs text-gray-500 text-center"
+        >
           Need help? Contact IT Support
-        </p>
-      </div>
+        </motion.p>
+      </motion.div>
     </div>
-  );
-}
-
-// =============================================================================
-// DEMO CREDENTIAL BUTTON
-// =============================================================================
-
-interface DemoCredentialProps {
-  role: string;
-  email: string;
-  onClick: () => void;
-}
-
-function DemoCredential({ role, email, onClick }: DemoCredentialProps): React.ReactElement {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={cn(
-        'p-2 rounded-lg text-left',
-        'bg-brand-steel-blue/30 hover:bg-brand-steel-blue/50',
-        'border border-brand-harbor/30 hover:border-brand-harbor/50',
-        'transition-colors'
-      )}
-    >
-      <p className="font-medium text-brand-sea-foam">{role}</p>
-      <p className="text-brand-fog truncate">{email}</p>
-    </button>
   );
 }
 
