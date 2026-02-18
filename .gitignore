@@ -30,3 +30,4 @@ cloud-run.env
 *.envserver/gcs-key.json
 *.json.key
 yes/
+server/gcs-key.json
